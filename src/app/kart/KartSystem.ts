@@ -2,7 +2,8 @@ import System from "~/app/System";
 import SceneSystem from "~/app/systems/SceneSystem";
 import ControlsSystem from "~/app/systems/ControlsSystem";
 import TerrainSystem from "~/app/systems/TerrainSystem";
-import ColoredBox from "~/app/kart/ColoredBox";
+import ColoredMesh from "~/app/kart/ColoredMesh";
+import KartModel from "~/app/kart/KartModel";
 import KartController from "~/app/kart/KartController";
 import Star, {StarDefinitions} from "~/app/kart/Stars";
 import HUD from "~/app/kart/HUD";
@@ -17,7 +18,8 @@ const StarSpinSpeed = 1.5;
 const Arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
 
 export default class KartSystem extends System {
-	public objects: ColoredBox[] = [];
+	public objects: ColoredMesh[] = [];
+	private kart: KartModel = null;
 	private stars: Star[] = [];
 	private hud: HUD = null;
 	private startTime: number = null;
@@ -29,16 +31,9 @@ export default class KartSystem extends System {
 		const worldScale = MathUtils.getMercatorScaleFactor(lat);
 		const wrapper = this.systemManager.getSystem(SceneSystem).objects.wrapper;
 
-		const box = new ColoredBox(
-			2 * worldScale,
-			0.8 * worldScale,
-			1.2 * worldScale,
-			new Vec3(0.9, 0.15, 0.1),
-			new Vec3(0, 0, 0)
-		);
-
-		this.objects.push(box);
-		wrapper.add(box);
+		this.kart = new KartModel(worldScale);
+		this.objects.push(...this.kart.renderables);
+		wrapper.add(this.kart.root);
 
 		this.stars = StarDefinitions.map((def, i) => {
 			const star = Star.create(def, worldScale, i * (Math.PI / 4));
@@ -174,16 +169,7 @@ export default class KartSystem extends System {
 			return;
 		}
 
-		const box = this.objects[0];
-
-		box.position.x = controller.position.x;
-		box.position.y = controller.position.y;
-		box.position.z = controller.position.z;
-		box.rotation.y = controller.heading;
-		// SceneSystem has already refreshed world matrices this frame, so refresh this one
-		// explicitly; otherwise the kart renders one frame behind the camera and stutters.
-		box.updateMatrix();
-		box.updateMatrixWorld();
+		this.kart.update(controller, deltaTime);
 
 		if (this.startTime === null && controller.throttle !== 0) {
 			this.startTime = performance.now();
