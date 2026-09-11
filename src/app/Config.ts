@@ -87,7 +87,7 @@ const Config = {
 			status: ['off', 'on'],
 			statusLabels: ['Disabled', 'Enabled'],
 			statusDefault: 'on',
-			category: 'sound'
+			category: 'general'
 		},
 		/*airTraffic: {
 			label: 'Real-time air traffic',
