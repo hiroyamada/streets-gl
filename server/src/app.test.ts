@@ -37,6 +37,28 @@ describe('POST /api/scores', () => {
 		expect(res.body).toMatchObject({name: 'Alice', timeMs: 12345});
 		expect(typeof res.body.id).toBe('number');
 		expect(typeof res.body.createdAt).toBe('string');
+		expect(res.body.rank).toBe(1);
+	});
+
+	it('includes the submitted score\'s rank, ties sharing a rank', async () => {
+		const store = new MemoryScoreStore();
+		const app = createApp(store, {rateLimit: false});
+
+		const first = await request(app).post('/api/scores').send({name: 'Alice', timeMs: 5000});
+
+		expect(first.body.rank).toBe(1);
+
+		const faster = await request(app).post('/api/scores').send({name: 'Bob', timeMs: 1000});
+
+		expect(faster.body.rank).toBe(1);
+
+		const tie = await request(app).post('/api/scores').send({name: 'Carol', timeMs: 1000});
+
+		expect(tie.body.rank).toBe(1);
+
+		const slower = await request(app).post('/api/scores').send({name: 'Dave', timeMs: 9000});
+
+		expect(slower.body.rank).toBe(4);
 	});
 
 	it('trims the name', async () => {

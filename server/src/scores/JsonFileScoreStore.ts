@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {NewScore, Score, ScoreStore} from './ScoreStore';
+import {NewScore, Score, ScoreStore, ScoreWithRank} from './ScoreStore';
 
 interface JsonFileContents {
 	nextId: number;
@@ -32,7 +32,7 @@ export default class JsonFileScoreStore implements ScoreStore {
 		this.data = JSON.parse(raw) as JsonFileContents;
 	}
 
-	public async add(score: NewScore): Promise<Score> {
+	public async add(score: NewScore): Promise<ScoreWithRank> {
 		const task = this.writeQueue.then(() => this.doAdd(score));
 
 		// Keep the queue chain alive even if this particular write fails, so
@@ -45,7 +45,7 @@ export default class JsonFileScoreStore implements ScoreStore {
 		return task;
 	}
 
-	private async doAdd(score: NewScore): Promise<Score> {
+	private async doAdd(score: NewScore): Promise<ScoreWithRank> {
 		const stored: Score = {
 			id: this.data.nextId,
 			name: score.name,
@@ -58,7 +58,9 @@ export default class JsonFileScoreStore implements ScoreStore {
 
 		await this.writeToDisk();
 
-		return stored;
+		const faster = this.data.scores.filter(s => s.timeMs < stored.timeMs).length;
+
+		return {...stored, rank: faster + 1};
 	}
 
 	private async writeToDisk(): Promise<void> {

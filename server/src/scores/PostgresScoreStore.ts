@@ -1,5 +1,5 @@
 import {Pool} from 'pg';
-import {NewScore, Score, ScoreStore} from './ScoreStore';
+import {NewScore, Score, ScoreStore, ScoreWithRank} from './ScoreStore';
 
 interface ScoreRow {
 	id: string | number;
@@ -73,13 +73,27 @@ export default class PostgresScoreStore implements ScoreStore {
 		}
 	}
 
-	public async add(score: NewScore): Promise<Score> {
+	public async add(score: NewScore): Promise<ScoreWithRank> {
 		const result = await this.pool.query<ScoreRow>(
 			`INSERT INTO scores (name, time_ms) VALUES ($1, $2) RETURNING id, name, time_ms, created_at;`,
 			[score.name, score.timeMs]
 		);
 
-		return rowToScore(result.rows[0]);
+		const stored = rowToScore(result.rows[0]);
+
+		// A second, separate query: under a concurrent insert between these two
+		// queries, the computed rank could be off by one. That's acceptable here
+		// since rank is only informational feedback to the submitting client.
+		const rankResult = await this.pool.query<{faster: string}>(
+			`SELECT COUNT(*) AS faster FROM scores WHERE time_ms < $1;`,
+			[stored.timeMs]
+		);
+
+		// pg returns COUNT(*) as a string (it's a bigint), so it must be
+		// converted with Number() before doing arithmetic on it.
+		const rank = Number(rankResult.rows[0].faster) + 1;
+
+		return {...stored, rank};
 	}
 
 	public async list(limit: number): Promise<Score[]> {

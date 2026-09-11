@@ -82,7 +82,7 @@ Streets GL ships with a small Node.js/Express backend for storing and retrieving
 
 ### Endpoints
 
-- `POST /api/scores` — submit a score. Body: `{"name": "Alice", "timeMs": 12345}`. Returns `201` on success.
+- `POST /api/scores` — submit a score. Body: `{"name": "Alice", "timeMs": 12345}`. Returns `201` on success, with the stored score plus its `rank` among all stored scores (1-based; lower `timeMs` is better, and tied times share a rank), e.g. `{"id":7,"name":"Alice","timeMs":12345,"createdAt":"2024-01-01T00:00:00.000Z","rank":3}`.
 
   ```
   curl -X POST http://localhost:8080/api/scores \

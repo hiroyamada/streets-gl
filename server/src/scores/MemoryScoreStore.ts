@@ -1,4 +1,4 @@
-import {NewScore, Score, ScoreStore} from './ScoreStore';
+import {NewScore, Score, ScoreStore, ScoreWithRank} from './ScoreStore';
 
 /**
  * Simple in-memory ScoreStore implementation, intended for tests only.
@@ -11,7 +11,7 @@ export default class MemoryScoreStore implements ScoreStore {
 		return undefined;
 	}
 
-	public async add(score: NewScore): Promise<Score> {
+	public async add(score: NewScore): Promise<ScoreWithRank> {
 		const stored: Score = {
 			id: this.nextId,
 			name: score.name,
@@ -22,7 +22,9 @@ export default class MemoryScoreStore implements ScoreStore {
 		this.nextId += 1;
 		this.scores.push(stored);
 
-		return stored;
+		const faster = this.scores.filter(s => s.timeMs < stored.timeMs).length;
+
+		return {...stored, rank: faster + 1};
 	}
 
 	public async list(limit: number): Promise<Score[]> {

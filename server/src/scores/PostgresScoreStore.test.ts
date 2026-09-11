@@ -30,8 +30,31 @@ describe('PostgresScoreStore', () => {
 		expect(typeof score.id).toBe('number');
 		expect(score.name).toBe('Alice');
 		expect(score.timeMs).toBe(1000);
+		expect(score.rank).toBe(1);
 		expect(() => new Date(score.createdAt).toISOString()).not.toThrow();
 		expect(new Date(score.createdAt).toISOString()).toBe(score.createdAt);
+	});
+
+	test('add returns the rank of the submitted score', async () => {
+		const store = createStore();
+
+		await store.init();
+
+		const first = await store.add({name: 'Alice', timeMs: 5000});
+
+		expect(first.rank).toBe(1);
+
+		const faster = await store.add({name: 'Bob', timeMs: 1000});
+
+		expect(faster.rank).toBe(1);
+
+		const tie = await store.add({name: 'Carol', timeMs: 1000});
+
+		expect(tie.rank).toBe(1);
+
+		const slower = await store.add({name: 'Dave', timeMs: 9000});
+
+		expect(slower.rank).toBe(4);
 	});
 
 	test('list orders by timeMs ascending, ties broken by id', async () => {

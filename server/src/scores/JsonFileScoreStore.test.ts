@@ -59,6 +59,28 @@ describe('JsonFileScoreStore', () => {
 		expect(new Date(first.createdAt).toISOString()).toBe(first.createdAt);
 	});
 
+	test('add returns the rank of the submitted score', async () => {
+		const store = new JsonFileScoreStore(filePath);
+
+		await store.init();
+
+		const first = await store.add({name: 'Alice', timeMs: 5000});
+
+		expect(first.rank).toBe(1);
+
+		const faster = await store.add({name: 'Bob', timeMs: 1000});
+
+		expect(faster.rank).toBe(1);
+
+		const tie = await store.add({name: 'Carol', timeMs: 1000});
+
+		expect(tie.rank).toBe(1);
+
+		const slower = await store.add({name: 'Dave', timeMs: 9000});
+
+		expect(slower.rank).toBe(4);
+	});
+
 	test('list sorts by timeMs ascending, ties broken by insertion order', async () => {
 		const store = new JsonFileScoreStore(filePath);
 
