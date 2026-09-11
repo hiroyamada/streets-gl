@@ -533,7 +533,7 @@ export default class GBufferPass extends Pass<{
 			this.kartMaterial.getUniform('modelMatrix', 'MainBlock').value = new Float32Array(object.matrixWorld.values);
 			this.kartMaterial.getUniform('viewMatrix', 'MainBlock').value = new Float32Array(camera.matrixWorldInverse.values);
 			this.kartMaterial.getUniform('modelViewMatrixPrev', 'MainBlock').value = new Float32Array(mvMatrixPrev.values);
-			this.kartMaterial.getUniform<UniformFloat3>('color', 'MainBlock').value =
+			this.kartMaterial.getUniform<UniformFloat3>('tint', 'MainBlock').value =
 				new Float32Array([object.color.x, object.color.y, object.color.z]);
 			this.kartMaterial.getUniform<UniformFloat3>('glow', 'MainBlock').value =
 				new Float32Array([object.glow.x, object.glow.y, object.glow.z]);
