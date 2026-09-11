@@ -1,4 +1,5 @@
 export enum RacePhase {
+	Title,
 	Countdown,
 	Racing,
 	Finished
@@ -6,11 +7,14 @@ export enum RacePhase {
 
 export const CountdownDuration = 3000;
 export const GoDisplayDuration = 900;
+export const CourseName = 'Shibuya Circuit';
 const BestTimeStorageKey = 'shibuyaKart.bestTime';
 
-// Race bookkeeping: countdown, timer, split times, best time. Times are in milliseconds.
+// Race bookkeeping: title screen, countdown, timer, split times, best time. Times are in
+// milliseconds.
 export default class RaceState {
-	public phase: RacePhase = RacePhase.Countdown;
+	public phase: RacePhase = RacePhase.Title;
+	public titleStart: number = 0;
 	public countdownStart: number = 0;
 	public raceStart: number = null;
 	public finishTime: number = null;
@@ -44,13 +48,31 @@ export default class RaceState {
 	}
 
 	public reset(now: number): void {
-		this.phase = RacePhase.Countdown;
-		this.countdownStart = now;
+		this.phase = RacePhase.Title;
+		this.titleStart = now;
 		this.raceStart = null;
 		this.finishTime = null;
 		this.splits = [];
 		this.nextStarIndex = 0;
 		this.falseStart = false;
+	}
+
+	// Milliseconds since the title screen appeared, for the cinematic camera.
+	public getTitleElapsed(now: number): number {
+		return now - this.titleStart;
+	}
+
+	// Advances from the title screen into the 3-2-1 countdown. Only valid from Title; returns
+	// whether the transition happened, so a repeated Space press is harmless.
+	public beginCountdown(now: number): boolean {
+		if (this.phase !== RacePhase.Title) {
+			return false;
+		}
+
+		this.phase = RacePhase.Countdown;
+		this.countdownStart = now;
+
+		return true;
 	}
 
 	// 3, 2, 1 during the countdown; 0 once it's time to go.

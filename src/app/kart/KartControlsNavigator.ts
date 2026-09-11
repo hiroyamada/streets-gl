@@ -9,6 +9,12 @@ import KartController from "~/app/kart/KartController";
 import BuildingCollider from "~/app/kart/BuildingCollider";
 import Easing from "~/lib/math/Easing";
 
+// Title-screen cinematic orbit: further back and higher than the chase cam so the kart,
+// the road ahead and the surrounding buildings are all visible.
+const CinematicOrbitDistance = 16;
+const CinematicOrbitHeight = 9;
+const CinematicSmoothingRate = 1.2;
+
 export default class KartControlsNavigator extends ControlsNavigator {
 	private readonly camera: PerspectiveCamera;
 	private readonly terrainHeightProvider: TerrainHeightProvider;
@@ -19,6 +25,7 @@ export default class KartControlsNavigator extends ControlsNavigator {
 	private steerLeftKeyPressed: boolean = false;
 	private steerRightKeyPressed: boolean = false;
 	private shouldSnapCamera: boolean = true;
+	private wasCinematic: boolean = false;
 
 	public constructor(
 		element: HTMLElement,
@@ -174,30 +181,51 @@ export default class KartControlsNavigator extends ControlsNavigator {
 		this.controller.update(deltaTime, groundHeight, this.collider);
 
 		const ws = this.controller.worldScale;
-		// During the start countdown the camera swings around from in front of the kart
-		// (Mario Kart's intro pan) to its usual chase position behind it.
-		const intro = Easing.easeOutCubic(MathUtils.clamp(this.controller.introProgress, 0, 1));
-		const orbitAngle = (1 - intro) * Math.PI;
-		const forward = KartController.getForwardVector(this.controller.heading + orbitAngle);
+		let desiredCameraPosition: Vec3;
+		let snapAlpha: number;
 
-		const desiredCameraPosition = new Vec3(
-			this.controller.position.x - forward.x * 9 * ws,
-			this.controller.position.y + (4 - 1.5 * (1 - intro)) * ws,
-			this.controller.position.z - forward.z * 9 * ws
-		);
+		if (this.controller.cinematic) {
+			// Title screen: a slow orbit further back and higher up than the chase cam, so the
+			// kart, the road ahead and the surrounding buildings are all in view.
+			const forward = KartController.getForwardVector(this.controller.cinematicAngle);
+
+			desiredCameraPosition = new Vec3(
+				this.controller.position.x - forward.x * CinematicOrbitDistance * ws,
+				this.controller.position.y + CinematicOrbitHeight * ws,
+				this.controller.position.z - forward.z * CinematicOrbitDistance * ws
+			);
+			snapAlpha = 1 - Math.exp(-CinematicSmoothingRate * deltaTime);
+
+			if (!this.wasCinematic) {
+				this.shouldSnapCamera = true;
+			}
+		} else {
+			// During the start countdown the camera swings around from in front of the kart
+			// (Mario Kart's intro pan) to its usual chase position behind it.
+			const intro = Easing.easeOutCubic(MathUtils.clamp(this.controller.introProgress, 0, 1));
+			const orbitAngle = (1 - intro) * Math.PI;
+			const forward = KartController.getForwardVector(this.controller.heading + orbitAngle);
+
+			desiredCameraPosition = new Vec3(
+				this.controller.position.x - forward.x * 9 * ws,
+				this.controller.position.y + (4 - 1.5 * (1 - intro)) * ws,
+				this.controller.position.z - forward.z * 9 * ws
+			);
+			snapAlpha = 1 - Math.exp(-(intro < 1 ? 10 : 6) * deltaTime);
+		}
 
 		if (this.shouldSnapCamera) {
 			this.camera.position.set(desiredCameraPosition.x, desiredCameraPosition.y, desiredCameraPosition.z);
 			this.shouldSnapCamera = false;
 		} else {
-			const alpha = 1 - Math.exp(-(intro < 1 ? 10 : 6) * deltaTime);
-
 			this.camera.position.set(
-				MathUtils.lerp(this.camera.position.x, desiredCameraPosition.x, alpha),
-				MathUtils.lerp(this.camera.position.y, desiredCameraPosition.y, alpha),
-				MathUtils.lerp(this.camera.position.z, desiredCameraPosition.z, alpha)
+				MathUtils.lerp(this.camera.position.x, desiredCameraPosition.x, snapAlpha),
+				MathUtils.lerp(this.camera.position.y, desiredCameraPosition.y, snapAlpha),
+				MathUtils.lerp(this.camera.position.z, desiredCameraPosition.z, snapAlpha)
 			);
 		}
+
+		this.wasCinematic = this.controller.cinematic;
 
 		const lookAtTarget = new Vec3(
 			this.controller.position.x,

@@ -45,6 +45,10 @@ export default class KartController {
 	public throttleLockTime: number = 0;
 	public introProgress: number = 1;
 	public boostStarted: boolean = false;
+	// Title screen: while true, the camera orbits slowly around the kart driven by
+	// cinematicAngle instead of the usual chase/intro camera.
+	public cinematic: boolean = false;
+	public cinematicAngle: number = 0;
 
 	public constructor() {
 		this.reset();
@@ -72,6 +76,8 @@ export default class KartController {
 		this.hopRequested = false;
 		this.throttleLockTime = 0;
 		this.boostStarted = false;
+		this.cinematic = false;
+		this.cinematicAngle = 0;
 	}
 
 	public get maxSpeed(): number {
