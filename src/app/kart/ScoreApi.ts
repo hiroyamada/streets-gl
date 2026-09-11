@@ -27,7 +27,28 @@ async function readErrorMessage(response: Response): Promise<string> {
 	return `Request failed with status ${response.status}`;
 }
 
-export async function submitScore(name: string, timeMs: number): Promise<SubmittedScore> {
+// A 2xx response's `ok` flag says nothing about whether there's a body to parse
+// (e.g. a bare 201/204, or a 200 with an empty payload from a proxy in between).
+// Read the body as text first and only attempt JSON.parse on it when it's
+// actually non-empty, so a bodyless success doesn't surface as a SyntaxError.
+async function parseJsonBody<T>(response: Response): Promise<T | null> {
+	const text = await response.text();
+
+	if (text.trim() === '') {
+		return null;
+	}
+
+	try {
+		return JSON.parse(text) as T;
+	} catch (e) {
+		throw new Error(`Received a malformed response from the server (status ${response.status})`);
+	}
+}
+
+// Returns null when the save succeeded but the server didn't echo back the stored
+// score (a bodyless 2xx) - callers should treat that as a successful save with no
+// payload, not a failure.
+export async function submitScore(name: string, timeMs: number): Promise<SubmittedScore | null> {
 	const response = await fetch('/api/scores', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
@@ -38,7 +59,7 @@ export async function submitScore(name: string, timeMs: number): Promise<Submitt
 		throw new Error(await readErrorMessage(response));
 	}
 
-	return await response.json() as SubmittedScore;
+	return await parseJsonBody<SubmittedScore>(response);
 }
 
 export async function fetchTopScores(limit: number): Promise<ScoreEntry[]> {
@@ -48,5 +69,5 @@ export async function fetchTopScores(limit: number): Promise<ScoreEntry[]> {
 		throw new Error(await readErrorMessage(response));
 	}
 
-	return await response.json() as ScoreEntry[];
+	return (await parseJsonBody<ScoreEntry[]>(response)) ?? [];
 }

@@ -133,6 +133,22 @@ describe('ScoreSubmission', () => {
 		expect(calls.filter((c) => c.startsWith('setScoreSaved'))).toEqual(['setScoreSaved:Fox:1']);
 	});
 
+	test('a bodyless success (null result) still reports the save and shows the leaderboard', async () => {
+		const {hud, calls, triggerSubmit} = makeFakeHud();
+		const submission = new ScoreSubmission(hud);
+
+		submitScoreMock.mockResolvedValue(null);
+		fetchTopScoresMock.mockResolvedValue([{id: 7, name: 'Otter', timeMs: 1000, createdAt: ''}]);
+
+		submission.present(1000);
+		triggerSubmit('Otter');
+		await flush();
+
+		expect(calls).toContain('setScoreSaved:Otter:undefined');
+		expect(calls).not.toContain("setScoreError:Couldn't save your time");
+		expect(calls).toContain('showLeaderboard:1:-1');
+	});
+
 	test('a second submit while one is pending is ignored', async () => {
 		const {hud, triggerSubmit} = makeFakeHud();
 		const submission = new ScoreSubmission(hud);

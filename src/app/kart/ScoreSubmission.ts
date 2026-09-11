@@ -107,13 +107,15 @@ export default class ScoreSubmission {
 				ScoreSubmission.savePlayerName(name);
 			}
 
-			this.hud.setScoreSaved(result.name, result.rank);
+			// A null result means the save succeeded but the server didn't echo back
+			// the stored score (a bodyless 2xx) - fall back to what was submitted.
+			this.hud.setScoreSaved(result ? result.name : name, result ? result.rank : undefined);
 
 			try {
 				const top = await fetchTopScores(LeaderboardSize);
 
 				if (this.generation === generation) {
-					this.hud.showLeaderboard(top, result.id);
+					this.hud.showLeaderboard(top, result ? result.id : -1);
 				}
 			} catch (e) {
 				console.warn('Failed to load kart leaderboard', e);
