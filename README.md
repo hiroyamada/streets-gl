@@ -76,6 +76,72 @@ More information about contributing can be found in [CONTRIBUTING.md](CONTRIBUTI
 
 Known to work with Node.js 14.19.1.
 
+## 🏆 High score API
+
+Streets GL ships with a small Node.js/Express backend for storing and retrieving high scores.
+
+### Endpoints
+
+- `POST /api/scores` — submit a score. Body: `{"name": "Alice", "timeMs": 12345}`. Returns `201` on success, with the stored score plus its `rank` among all stored scores (1-based; lower `timeMs` is better, and tied times share a rank), e.g. `{"id":7,"name":"Alice","timeMs":12345,"createdAt":"2024-01-01T00:00:00.000Z","rank":3}`.
+
+  ```
+  curl -X POST http://localhost:8080/api/scores \
+    -H "Content-Type: application/json" \
+    -d '{"name":"Alice","timeMs":12345}'
+  ```
+
+- `GET /api/scores?limit=10` — list the top scores (defaults to 10).
+
+  ```
+  curl http://localhost:8080/api/scores?limit=10
+  ```
+
+- `GET /api/health` — health check.
+
+  ```
+  curl http://localhost:8080/api/health
+  ```
+
+### Local development
+
+Run the API server and the webpack dev server in two terminals:
+
+```
+npm run server:dev   # starts the API on http://localhost:8080
+npm run dev          # starts the webpack dev server, proxying /api to the server above
+```
+
+### Storage
+
+By default, scores are stored in a local JSON file (`server/data/scores.json`, configurable via `SCORES_FILE`). Set `DATABASE_URL` to use Postgres instead.
+
+If you're using [Supabase](https://supabase.com/), use its connection pooler string (port `6543`) rather than the direct connection — it's better suited for short-lived connections. TLS is enabled by default; set `DATABASE_SSL=disable` only for a local/self-hosted Postgres instance without TLS.
+
+### Production
+
+Build both the client and the server, then start:
+
+```
+npm run build
+npm run server:build
+npm start
+```
+
+Or use the provided `Dockerfile`, which builds both and serves the static build from `./build` alongside the API under `/api`.
+
+### Environment variables
+
+Copy `.env.example` to `.env` and adjust as needed.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `PORT` | `8080` | Port the server listens on. |
+| `DATABASE_URL` | _(unset)_ | Postgres connection string. Falls back to the JSON file store when unset. |
+| `DATABASE_SSL` | _(enabled)_ | Set to `disable` to turn off TLS for local Postgres. |
+| `SCORES_FILE` | `server/data/scores.json` | Path to the JSON fallback store. |
+| `STATIC_DIR` | `./build` | Directory the server serves as static assets in production. |
+| `NODE_ENV` | _(unset)_ | Set to `production` to serve the static build alongside the API. |
+
 ## ⭐ Sponsors
 
 - **[ONEGEO](https://onegeo.co/)**
