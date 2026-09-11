@@ -19,6 +19,8 @@ const BoostDuration = 1;
 const CollisionProbeDistance = 1.2;
 const WallSlideFriction = 0.9;
 const WallBounce = 0.25;
+const HopSpeed = 6.5;    // initial vertical velocity @ worldScale 1
+const HopGravity = 24;   // @ worldScale 1
 // Start a little south of the first star (world x = north) so it's the first target ahead.
 const StartOffsetSouth = 30;
 
@@ -33,6 +35,9 @@ export default class KartController {
 	public isDrifting: boolean = false;
 	public driftTime: number = 0;
 	public boostTime: number = 0;
+	public hopHeight: number = 0;
+	public hopVelocity: number = 0;
+	public hopRequested: boolean = false;
 	public worldScale: number = 1;
 	// Race flow: the kart is held on the start line during the countdown, a jump-start
 	// penalty briefly disables the throttle, and the camera intro is driven from here.
@@ -62,6 +67,9 @@ export default class KartController {
 		this.isDrifting = false;
 		this.driftTime = 0;
 		this.boostTime = 0;
+		this.hopHeight = 0;
+		this.hopVelocity = 0;
+		this.hopRequested = false;
 		this.throttleLockTime = 0;
 		this.boostStarted = false;
 	}
@@ -76,6 +84,10 @@ export default class KartController {
 
 	public get isBoosting(): boolean {
 		return this.boostTime > 0;
+	}
+
+	public get isAirborne(): boolean {
+		return this.hopHeight > 0;
 	}
 
 	public applyBoost(): void {
@@ -164,6 +176,9 @@ export default class KartController {
 		if (this.locked) {
 			this.speed = 0;
 			this.moveHeading = this.heading;
+			this.hopHeight = 0;
+			this.hopVelocity = 0;
+			this.hopRequested = false;
 			this.position.y = groundHeight ?? this.position.y;
 			return;
 		}
@@ -214,6 +229,22 @@ export default class KartController {
 		const forward = KartController.getForwardVector(this.moveHeading);
 
 		this.moveWithCollision(forward.x * this.speed * dt, forward.z * this.speed * dt, collider);
-		this.position.y = groundHeight ?? this.position.y;
+
+		if (this.hopRequested) {
+			if (this.hopHeight <= 0) {
+				this.hopVelocity = HopSpeed * this.worldScale;
+			}
+			this.hopRequested = false;
+		}
+
+		this.hopVelocity -= HopGravity * this.worldScale * dt;
+		this.hopHeight = Math.max(0, this.hopHeight + this.hopVelocity * dt);
+
+		if (this.hopHeight <= 0) {
+			this.hopVelocity = 0;
+		}
+
+		const baseHeight = groundHeight ?? (this.position.y - this.hopHeight);
+		this.position.y = baseHeight + this.hopHeight;
 	}
 }

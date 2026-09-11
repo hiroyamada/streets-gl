@@ -9,10 +9,13 @@ export interface StarDefinition {
 }
 
 // Collected in this order. Kept to three stars so a run takes about a minute.
+// Coordinates were hand-picked by driving the course in debug scouting mode
+// and verified against OpenStreetMap to sit on drivable street, clear of
+// building footprints.
 export const StarDefinitions: StarDefinition[] = [
-	{name: 'Scramble Crossing', lat: 35.6595, lon: 139.7005},
-	{name: 'Shibuya 109', lat: 35.6597, lon: 139.6987},
-	{name: 'Miyashita Park', lat: 35.6620, lon: 139.7020}
+	{name: 'Dogenzaka', lat: 35.65949, lon: 139.69948},
+	{name: 'Don Quijote', lat: 35.66049, lon: 139.69693},
+	{name: 'PARCO', lat: 35.66222, lon: 139.69733}
 ];
 
 const ActiveColor = new Vec3(1.0, 0.85, 0.2);

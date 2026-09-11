@@ -39,6 +39,8 @@ const MaxSteerAngle = MathUtils.toRad(28);
 const LeanAngle = MathUtils.toRad(4);
 const DriftLeanAngle = MathUtils.toRad(9);
 const PitchAngle = MathUtils.toRad(2);
+const HopStretchFactor = 0.05;
+const MaxHopStretch = 0.18;
 
 function buildBodyGeometry(): GeometryBuilder {
 	const g = new GeometryBuilder();
@@ -226,6 +228,7 @@ export default class KartModel {
 	private wheelSpin: number = 0;
 	private lean: number = 0;
 	private pitch: number = 0;
+	private hopStretch: number = 0;
 	private previousSpeed: number = 0;
 
 	public constructor(worldScale: number) {
@@ -281,17 +284,30 @@ export default class KartModel {
 		this.body.rotation.x = this.lean;
 		this.body.rotation.z = this.pitch;
 
+		// Squash/stretch driven by vertical velocity: stretches tall on the way up
+		// (positive hopVelocity) and squashes flat on the way down/landing.
+		const hopVelocity = controller.hopVelocity / controller.worldScale;
+		const targetHopStretch = MathUtils.clamp(hopVelocity * HopStretchFactor, -MaxHopStretch, MaxHopStretch);
+
+		this.hopStretch += (targetHopStretch - this.hopStretch) * smoothing;
+		this.body.scale.set(1 - this.hopStretch * 0.5, 1 + this.hopStretch, 1 - this.hopStretch * 0.5);
+
 		// Wheels roll with the ground speed; the front pair also turns with the steering.
 		this.wheelSpin -= speed * deltaTime / WheelRadius;
 		this.wheelSpin = MathUtils.mod(this.wheelSpin, Math.PI * 2);
 
 		const steerAngle = -controller.steer * MaxSteerAngle;
 
+		// Wheels tuck up toward the body while airborne, like they're relaxing off the ground.
+		const hopHeight = controller.hopHeight / controller.worldScale;
+		const wheelTuck = controller.isAirborne ? Math.min(hopHeight * 0.3, WheelRadius * 0.6) : 0;
+
 		for (let i = 0; i < this.wheels.length; i++) {
 			const wheel = this.wheels[i];
 
 			wheel.rotation.z = this.wheelSpin;
 			wheel.rotation.y = i < 2 ? steerAngle : 0;
+			wheel.position.y = WheelRadius - wheelTuck;
 		}
 
 		// Exhaust flames flicker while the boost is active, fading out as it runs down;

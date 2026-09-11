@@ -72,6 +72,9 @@ export default class KartControlsNavigator extends ControlsNavigator {
 				break;
 			case 'Space':
 				e.preventDefault();
+				if (!e.repeat) {
+					this.controller.hopRequested = true;
+				}
 				this.controller.drift = true;
 				break;
 		}
@@ -126,6 +129,7 @@ export default class KartControlsNavigator extends ControlsNavigator {
 		this.steerLeftKeyPressed = false;
 		this.steerRightKeyPressed = false;
 		this.controller.drift = false;
+		this.controller.hopRequested = false;
 	}
 
 	public syncWithCamera(prevNavigator: ControlsNavigator): void {
