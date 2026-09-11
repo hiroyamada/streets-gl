@@ -72,7 +72,7 @@ More information about contributing can be found in [CONTRIBUTING.md](CONTRIBUTI
 
 1. Clone this repository
 2. Install dependencies with `npm i`
-3. Run `npm run dev` to start a local development server
+3. Run `npm run dev` to start a local development server on http://localhost:3000
 
 Known to work with Node.js 14.19.1.
 
@@ -108,8 +108,10 @@ Run the API server and the webpack dev server in two terminals:
 
 ```
 npm run server:dev   # starts the API on http://localhost:8080
-npm run dev          # starts the webpack dev server, proxying /api to the server above
+npm run dev          # starts the webpack dev server on http://localhost:3000, proxying /api to the server above
 ```
+
+Or run both at once with `npm run dev:all`.
 
 ### Storage
 
