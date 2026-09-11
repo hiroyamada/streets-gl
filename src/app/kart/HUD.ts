@@ -68,7 +68,7 @@ export default class HUD {
 		this.soundEl = HUD.element('div', 'hud-sound');
 
 		const hint = HUD.element('div', 'hud-hint');
-		hint.textContent = 'WASD / arrows drive · hold Space while turning to drift, release to boost · R restart · C free camera · M engine sound';
+		hint.textContent = 'WASD / arrows drive · hold Space while turning to drift, release to boost · R restart · C free camera · M engine sound · music in Settings';
 
 		this.finishEl = HUD.element('div', 'hud-finish');
 		const title = HUD.element('div', 'title');

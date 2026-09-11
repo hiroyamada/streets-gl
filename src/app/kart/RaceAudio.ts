@@ -33,6 +33,14 @@ export default class RaceAudio {
 		this.ensureContext();
 	}
 
+	// Exposes the (lazily created) shared AudioContext so other synthesized audio, such
+	// as RaceMusic, can reuse it instead of juggling separate contexts / gesture-unlocks.
+	public getContext(): AudioContext {
+		this.ensureContext();
+
+		return this.context;
+	}
+
 	private tone(
 		frequency: number,
 		duration: number,

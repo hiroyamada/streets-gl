@@ -5,7 +5,6 @@ import {useRecoilValue} from "recoil";
 import {ActionsContext, AtomsContext} from "~/app/ui/UI";
 import ModalCategory from "~/app/ui/components/ModalPanel/ModalCategory";
 import ModalCategoryContainer from "~/app/ui/components/ModalPanel/ModalCategoryContainer";
-import Endpoints from "~/app/ui/components/ModalPanel/Endpoints";
 import SettingGroup, {SettingsGroupStructure} from "~/app/ui/components/SettingsModalPanel/SettingGroup";
 import ModalButtonRow from "~/app/ui/components/ModalPanel/ModalButtonRow";
 import {AiOutlinePlus, AiOutlineUndo} from "react-icons/ai";
@@ -61,6 +60,13 @@ const SettingsModalPanel: React.FC<{
 				<ModalCategory label={'Graphics'}>
 					{
 						categorizedGroups.graphics.map(group => {
+							return <SettingGroup key={group.parent} group={group}/>
+						})
+					}
+				</ModalCategory>
+				<ModalCategory label={'Sound'}>
+					{
+						categorizedGroups.sound.map(group => {
 							return <SettingGroup key={group.parent} group={group}/>
 						})
 					}
