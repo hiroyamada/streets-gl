@@ -12,6 +12,9 @@
 		"test": "jest"
 	},
 	"author": "StrandedKitty",
+	"engines": {
+		"node": ">=18 <23"
+	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/StrandedKitty/streets-gl.git"
