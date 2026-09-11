@@ -9,6 +9,7 @@ import Star, {StarDefinitions} from "~/app/kart/Stars";
 import HUD from "~/app/kart/HUD";
 import RaceAudio from "~/app/kart/RaceAudio";
 import RaceState, {GoDisplayDuration, RacePhase} from "~/app/kart/RaceState";
+import ScoreSubmission from "~/app/kart/ScoreSubmission";
 import Vec3 from "~/lib/math/Vec3";
 import MathUtils from "~/lib/math/MathUtils";
 import Config from "~/app/Config";
@@ -28,6 +29,7 @@ export default class KartSystem extends System {
 	private hud: HUD = null;
 	private audio: RaceAudio = new RaceAudio();
 	private race: RaceState = null;
+	private scoreSubmission: ScoreSubmission = null;
 	private lastCountdownValue: number = -1;
 	private goShownAt: number = null;
 	private throttleDuringCountdown: boolean = false;
@@ -60,6 +62,7 @@ export default class KartSystem extends System {
 
 		this.race = new RaceState(this.stars.length);
 		this.hud = new HUD();
+		this.scoreSubmission = new ScoreSubmission(this.hud);
 
 		document.addEventListener('keydown', (e: KeyboardEvent) => this.keyDownEvent(e));
 
@@ -85,6 +88,10 @@ export default class KartSystem extends System {
 	public restart(): void {
 		const now = performance.now();
 
+		if (this.race.phase === RacePhase.Finished) {
+			this.scoreSubmission.submitOnRestartIfNeeded();
+		}
+
 		for (const star of this.stars) {
 			star.reset();
 		}
@@ -94,6 +101,7 @@ export default class KartSystem extends System {
 		this.goShownAt = null;
 		this.throttleDuringCountdown = false;
 		this.hud.hideFinish();
+		this.scoreSubmission.reset();
 		this.hud.hideCountdown();
 		this.hud.setCount(0, this.stars.length);
 		this.hud.setTimer(RaceState.formatTime(0));
@@ -235,6 +243,7 @@ export default class KartSystem extends System {
 				RaceState.formatTime(this.race.bestTime),
 				isNewBest
 			);
+			this.scoreSubmission.present(total);
 		}
 	}
 

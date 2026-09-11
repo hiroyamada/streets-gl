@@ -1,3 +1,5 @@
+import RaceState from "~/app/kart/RaceState";
+
 const Styles = `
 #hud { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 10;
 	font-family: 'Russo One', 'Inter', system-ui, sans-serif; color: #fff; font-style: italic;
@@ -25,6 +27,19 @@ const Styles = `
 #hud .hud-finish td { padding: 2px 14px; text-align: left; }
 #hud .hud-finish td:last-child { text-align: right; }
 #hud .hud-finish .restart { font-size: 18px; margin-top: 12px; opacity: .9; }
+#hud .hud-score { pointer-events: auto; font-style: normal; display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
+#hud .hud-score-form { display: flex; gap: 8px; align-items: center; }
+#hud .hud-score input { font: inherit; font-style: normal; font-size: 16px; padding: 4px 8px; border-radius: 4px; border: 1px solid #555; background: #1a1a2e; color: #fff; width: 200px; text-shadow: none; }
+#hud .hud-score input:disabled { opacity: .6; }
+#hud .hud-score button { font: inherit; font-style: normal; font-size: 16px; padding: 4px 14px; border-radius: 4px; border: none; background: #ffd83d; color: #1a1a2e; cursor: pointer; text-shadow: none; }
+#hud .hud-score button:disabled { opacity: .6; cursor: default; }
+#hud .hud-score-status { font-size: 15px; opacity: .9; }
+#hud .hud-score-status.error { color: #ff7d7d; }
+#hud .hud-score-result { font-size: 18px; color: #7dff9a; }
+#hud .hud-leaderboard { font-size: 15px; border-collapse: collapse; margin-top: 4px; }
+#hud .hud-leaderboard td { padding: 1px 10px; text-align: left; }
+#hud .hud-leaderboard td:last-child { text-align: right; }
+#hud .hud-leaderboard tr.own { color: #ffd83d; }
 @keyframes hudPop { 0% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(.9); opacity: 0; } }
 @keyframes hudBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes hudSplit { 0% { opacity: 0; transform: translateY(-6px); } 15% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; } }
@@ -32,6 +47,9 @@ const Styles = `
 `;
 
 export default class HUD {
+	private static readonly DriveHint: string =
+		'WASD / arrows drive · hold Space while turning to drift, release to boost · R restart · C free camera · M engine sound';
+	private static readonly FinishHint: string = 'Enter to save · Esc then Space to race again';
 	private readonly root: HTMLDivElement;
 	private readonly starsEl: HTMLDivElement;
 	private readonly timerEl: HTMLDivElement;
@@ -44,6 +62,14 @@ export default class HUD {
 	private readonly finishTotalEl: HTMLDivElement;
 	private readonly finishBestEl: HTMLDivElement;
 	private readonly finishTableEl: HTMLTableElement;
+	private readonly hintEl: HTMLDivElement;
+	private readonly scoreEl: HTMLDivElement;
+	private readonly scoreFormEl: HTMLDivElement;
+	private readonly scoreInputEl: HTMLInputElement;
+	private readonly scoreButtonEl: HTMLButtonElement;
+	private readonly scoreStatusEl: HTMLDivElement;
+	private readonly scoreResultEl: HTMLDivElement;
+	private readonly leaderboardEl: HTMLTableElement;
 	private lastStarsText: string = '';
 	private lastTimerText: string = '';
 	private lastNextText: string = '';
@@ -67,8 +93,8 @@ export default class HUD {
 		this.countdownEl = HUD.element('div', 'hud-countdown');
 		this.soundEl = HUD.element('div', 'hud-sound');
 
-		const hint = HUD.element('div', 'hud-hint');
-		hint.textContent = 'WASD / arrows drive · hold Space while turning to drift, release to boost · R restart · C free camera · M engine sound';
+		this.hintEl = HUD.element('div', 'hud-hint');
+		this.hintEl.textContent = HUD.DriveHint;
 
 		this.finishEl = HUD.element('div', 'hud-finish');
 		const title = HUD.element('div', 'title');
@@ -76,13 +102,29 @@ export default class HUD {
 		this.finishTotalEl = HUD.element('div', 'total');
 		this.finishBestEl = HUD.element('div', 'best');
 		this.finishTableEl = document.createElement('table');
-		const restart = HUD.element('div', 'restart');
-		restart.textContent = 'Press Space to race again';
-		this.finishEl.append(title, this.finishTotalEl, this.finishBestEl, this.finishTableEl, restart);
+
+		this.scoreEl = HUD.element('div', 'hud-score');
+		this.scoreFormEl = HUD.element('div', 'hud-score-form');
+		this.scoreInputEl = document.createElement('input');
+		this.scoreInputEl.type = 'text';
+		this.scoreInputEl.maxLength = 20;
+		this.scoreInputEl.spellcheck = false;
+		this.scoreButtonEl = document.createElement('button');
+		this.scoreButtonEl.textContent = 'Submit';
+		this.scoreFormEl.append(this.scoreInputEl, this.scoreButtonEl);
+		this.scoreStatusEl = HUD.element('div', 'hud-score-status');
+		this.scoreResultEl = HUD.element('div', 'hud-score-result');
+		this.leaderboardEl = document.createElement('table');
+		this.leaderboardEl.className = 'hud-leaderboard';
+		this.scoreEl.append(this.scoreFormEl, this.scoreStatusEl, this.scoreResultEl, this.leaderboardEl);
+
+		this.restrictKeysToInput(this.scoreInputEl);
+
+		this.finishEl.append(title, this.finishTotalEl, this.finishBestEl, this.finishTableEl, this.scoreEl);
 
 		this.root.append(
 			this.starsEl, this.timerEl, this.splitEl, this.nextEl, this.arrowEl,
-			this.countdownEl, hint, this.soundEl, this.finishEl
+			this.countdownEl, this.hintEl, this.soundEl, this.finishEl
 		);
 
 		const container = document.getElementById('wrapper') ?? document.body;
@@ -96,6 +138,26 @@ export default class HUD {
 		const el = document.createElement(tag);
 		el.className = className;
 		return el;
+	}
+
+	// Typing in the score input must not reach the document/window keydown listeners
+	// that drive the kart (WASD, Space, R, ...). Those listeners are bubble-phase, so
+	// stopping propagation here keeps every keystroke local to the input.
+	private restrictKeysToInput(input: HTMLInputElement): void {
+		const stop = (e: KeyboardEvent): void => e.stopPropagation();
+
+		input.addEventListener('keydown', stop);
+		input.addEventListener('keyup', stop);
+		input.addEventListener('keypress', stop);
+
+		input.addEventListener('keydown', (e: KeyboardEvent): void => {
+			if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+				input.blur();
+				this.scoreButtonEl.click();
+			} else if (e.code === 'Escape') {
+				input.blur();
+			}
+		});
 	}
 
 	private static restartAnimation(el: HTMLElement, className: string): void {
@@ -193,10 +255,84 @@ export default class HUD {
 		}
 
 		this.finishEl.classList.add('show');
+		this.hintEl.textContent = HUD.FinishHint;
 	}
 
 	public hideFinish(): void {
 		this.finishEl.classList.remove('show');
+		this.hintEl.textContent = HUD.DriveHint;
+		this.scoreFormEl.hidden = false;
+		this.scoreInputEl.disabled = false;
+		this.scoreButtonEl.disabled = false;
+		this.scoreButtonEl.textContent = 'Submit';
+		this.scoreButtonEl.onclick = null;
+		this.scoreStatusEl.textContent = '';
+		this.scoreStatusEl.classList.remove('error');
+		this.scoreResultEl.textContent = '';
+		this.leaderboardEl.textContent = '';
+	}
+
+	// Shows the "save your time" form prefilled with `defaultName`. `onSubmit` fires on
+	// button click or Enter with the current (trimmed) input value.
+	public showScoreForm(defaultName: string, onSubmit: (name: string) => void): void {
+		this.scoreInputEl.value = defaultName;
+		this.scoreInputEl.disabled = false;
+		this.scoreButtonEl.disabled = false;
+		this.scoreButtonEl.textContent = 'Submit';
+		this.scoreFormEl.hidden = false;
+		this.scoreStatusEl.textContent = '';
+		this.scoreStatusEl.classList.remove('error');
+		this.scoreResultEl.textContent = '';
+		this.leaderboardEl.textContent = '';
+		this.scoreButtonEl.onclick = (): void => onSubmit(this.getScoreNameInput());
+	}
+
+	public getScoreNameInput(): string {
+		return this.scoreInputEl.value.trim();
+	}
+
+	public focusScoreInput(): void {
+		this.scoreInputEl.focus();
+		this.scoreInputEl.select();
+	}
+
+	public setScoreSaving(): void {
+		this.scoreInputEl.disabled = true;
+		this.scoreButtonEl.disabled = true;
+		this.scoreButtonEl.textContent = 'Saving…';
+		this.scoreStatusEl.textContent = '';
+		this.scoreStatusEl.classList.remove('error');
+	}
+
+	public setScoreSaved(name: string, rank: number): void {
+		this.scoreFormEl.hidden = true;
+		this.scoreStatusEl.textContent = '';
+		this.scoreStatusEl.classList.remove('error');
+		this.scoreResultEl.textContent = `Saved as ${name} · Rank #${rank}`;
+	}
+
+	public setScoreError(message: string): void {
+		this.scoreInputEl.disabled = false;
+		this.scoreButtonEl.disabled = false;
+		this.scoreButtonEl.textContent = 'Submit';
+		this.scoreStatusEl.textContent = message;
+		this.scoreStatusEl.classList.add('error');
+	}
+
+	public showLeaderboard(entries: {id: number; name: string; timeMs: number}[], highlightId: number): void {
+		this.leaderboardEl.textContent = '';
+
+		for (let i = 0; i < entries.length; i++) {
+			const entry = entries[i];
+			const row = this.leaderboardEl.insertRow();
+
+			if (entry.id === highlightId) {
+				row.classList.add('own');
+			}
+
+			row.insertCell().textContent = `#${i + 1} ${entry.name}`;
+			row.insertCell().textContent = RaceState.formatTime(entry.timeMs);
+		}
 	}
 
 	public setEngineSound(enabled: boolean): void {
