@@ -12,6 +12,7 @@ import SavedPlacesModalPanel from "~/app/ui/components/SavedPlacesModalPanel";
 import DataTimestamp from "~/app/ui/components/DataTimestamp";
 import SettingsModalPanel from "~/app/ui/components/SettingsModalPanel";
 import SettingsButton from "~/app/ui/components/SettingsButton";
+import ApiDebugPanel from "~/app/ui/components/ApiDebugPanel";
 
 const MainScreen: React.FC = () => {
 	const atoms = useContext(AtomsContext);
@@ -21,6 +22,7 @@ const MainScreen: React.FC = () => {
 	const loadingProgress = useRecoilValue(atoms.resourcesLoadingProgress);
 	const [activeModalWindow, setActiveModalWindow] = useState<string>('');
 	const [isUIVisible, setIsUIVisible] = useState<boolean>(true);
+	const [isApiDebugVisible, setIsApiDebugVisible] = useState<boolean>(false);
 
 	const showRenderGraph = useCallback((): void => setIsRenderGraphVisible(true), []);
 	const hideRenderGraph = useCallback((): void => setIsRenderGraphVisible(false), []);
@@ -37,13 +39,25 @@ const MainScreen: React.FC = () => {
 			if (e.code === 'Escape') {
 				closeModal();
 			}
+
+			if (e.code === 'KeyB' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+				const target = e.target as HTMLElement;
+				const isEditableTarget = target && (
+					target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+				);
+
+				if (!isEditableTarget) {
+					e.preventDefault();
+					setIsApiDebugVisible(!isApiDebugVisible);
+				}
+			}
 		}
 
 		window.addEventListener('keydown', handler);
 		return () => {
 			window.removeEventListener('keydown', handler)
 		};
-	}, [isUIVisible]);
+	}, [isUIVisible, isApiDebugVisible]);
 
 	let containerClassNames = styles.mainScreen;
 
@@ -64,6 +78,9 @@ const MainScreen: React.FC = () => {
 				activeModalWindow === 'settings' && <SettingsModalPanel onClose={closeModal}/>
 			}
 			<DebugInfo showRenderGraph={showRenderGraph}/>
+			{
+				isApiDebugVisible && <ApiDebugPanel/>
+			}
 			<DataTimestamp/>
 			<SelectionPanel/>
 			<LegalAttributionPanel/>
