@@ -95,6 +95,7 @@ export default class UISystem extends System {
 			lookAtNorth: () => {
 				this.systemManager.getSystem(ControlsSystem).lookAtNorth();
 			},
+			resetSettings: () => settingsSystem.resetSettings(),
 			setOverpassEndpoints: (endpoints: OverpassEndpoint[]) => {
 				this.ui.setStateFieldValue('overpassEndpoints', endpoints);
 			},

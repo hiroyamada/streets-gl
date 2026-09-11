@@ -10,6 +10,8 @@ import NavPanel from "~/app/ui/components/NavPanel";
 import styles from './MainScreen.scss';
 import SavedPlacesModalPanel from "~/app/ui/components/SavedPlacesModalPanel";
 import DataTimestamp from "~/app/ui/components/DataTimestamp";
+import SettingsModalPanel from "~/app/ui/components/SettingsModalPanel";
+import SettingsButton from "~/app/ui/components/SettingsButton";
 
 const MainScreen: React.FC = () => {
 	const atoms = useContext(AtomsContext);
@@ -58,11 +60,18 @@ const MainScreen: React.FC = () => {
 			{
 				activeModalWindow === 'savedPlaces' && <SavedPlacesModalPanel onClose={closeModal}/>
 			}
+			{
+				activeModalWindow === 'settings' && <SettingsModalPanel onClose={closeModal}/>
+			}
 			<DebugInfo showRenderGraph={showRenderGraph}/>
 			<DataTimestamp/>
 			<SelectionPanel/>
 			<LegalAttributionPanel/>
 			<CompassPanel/>
+			<SettingsButton
+				isActive={activeModalWindow === 'settings'}
+				onClick={(): void => setActiveModalWindow(activeModalWindow === 'settings' ? '' : 'settings')}
+			/>
 			{
 				isRenderGraphVisible && (
 					<RenderGraphViewer
