@@ -19,6 +19,8 @@ const BoostDuration = 1;
 const CollisionProbeDistance = 1.2;
 const WallSlideFriction = 0.9;
 const WallBounce = 0.25;
+// Start a little south of the first star (world x = north) so it's the first target ahead.
+const StartOffsetSouth = 30;
 
 export default class KartController {
 	public position: Vec3 = new Vec3();
@@ -32,6 +34,12 @@ export default class KartController {
 	public driftTime: number = 0;
 	public boostTime: number = 0;
 	public worldScale: number = 1;
+	// Race flow: the kart is held on the start line during the countdown, a jump-start
+	// penalty briefly disables the throttle, and the camera intro is driven from here.
+	public locked: boolean = true;
+	public throttleLockTime: number = 0;
+	public introProgress: number = 1;
+	public boostStarted: boolean = false;
 
 	public constructor() {
 		this.reset();
@@ -46,7 +54,7 @@ export default class KartController {
 		const startPosition = MathUtils.degrees2meters(lat, lon);
 
 		this.worldScale = MathUtils.getMercatorScaleFactor(lat);
-		this.position.x = startPosition.x;
+		this.position.x = startPosition.x - StartOffsetSouth * this.worldScale;
 		this.position.z = startPosition.y;
 		this.heading = 0;
 		this.moveHeading = 0;
@@ -54,6 +62,29 @@ export default class KartController {
 		this.isDrifting = false;
 		this.driftTime = 0;
 		this.boostTime = 0;
+		this.throttleLockTime = 0;
+		this.boostStarted = false;
+	}
+
+	public get maxSpeed(): number {
+		return MaxSpeed * this.worldScale;
+	}
+
+	public get speedRatio(): number {
+		return Math.min(1, Math.abs(this.speed) / this.maxSpeed);
+	}
+
+	public get isBoosting(): boolean {
+		return this.boostTime > 0;
+	}
+
+	public applyBoost(): void {
+		this.boostTime = BoostDuration;
+		this.boostStarted = true;
+	}
+
+	public applyThrottlePenalty(seconds: number): void {
+		this.throttleLockTime = seconds;
 	}
 
 	private updateDrift(dt: number, maxSpeed: number): number {
@@ -66,7 +97,7 @@ export default class KartController {
 			this.isDrifting = false;
 
 			if (this.driftTime >= DriftMinTime) {
-				this.boostTime = BoostDuration;
+				this.applyBoost();
 			}
 
 			this.driftTime = 0;
@@ -130,11 +161,24 @@ export default class KartController {
 		const brake = Brake * this.worldScale;
 		const friction = Friction * this.worldScale;
 
-		if (this.throttle !== 0) {
-			const isOpposingMotion = this.speed !== 0 && Math.sign(this.throttle) !== Math.sign(this.speed);
+		if (this.locked) {
+			this.speed = 0;
+			this.moveHeading = this.heading;
+			this.position.y = groundHeight ?? this.position.y;
+			return;
+		}
+
+		if (this.throttleLockTime > 0) {
+			this.throttleLockTime = Math.max(0, this.throttleLockTime - dt);
+		}
+
+		const throttle = this.throttleLockTime > 0 ? 0 : this.throttle;
+
+		if (throttle !== 0) {
+			const isOpposingMotion = this.speed !== 0 && Math.sign(throttle) !== Math.sign(this.speed);
 			const rate = isOpposingMotion ? brake : acceleration;
 
-			this.speed += this.throttle * rate * dt;
+			this.speed += throttle * rate * dt;
 		} else if (this.speed !== 0) {
 			const frictionDelta = friction * dt;
 
