@@ -7,7 +7,7 @@ import ColoredMesh from "~/app/kart/ColoredMesh";
 import KartModel from "~/app/kart/KartModel";
 import KartController from "~/app/kart/KartController";
 import Star, {StarDefinitions} from "~/app/kart/Stars";
-import HUD from "~/app/kart/HUD";
+import HUD, {ArrowSize} from "~/app/kart/HUD";
 import RaceAudio from "~/app/kart/RaceAudio";
 import RaceMusic from "~/app/kart/RaceMusic";
 import RaceState, {CourseName, GoDisplayDuration, RacePhase} from "~/app/kart/RaceState";
@@ -26,7 +26,7 @@ const StarBobAmplitude = 0.25;
 const StarSpinSpeed = 1.5;
 const StarPopDuration = 300;
 const JumpStartPenalty = 0.7;
-const ArrowEdgeInset = 44;
+const ArrowEdgeInset = ArrowSize / 2 + 12;
 const KartName = 'Standard';
 const CinematicOrbitRate = 0.25; // radians per second
 
