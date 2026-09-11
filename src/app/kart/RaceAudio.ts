@@ -73,6 +73,13 @@ export default class RaceAudio {
 		this.tone(440, 0.18);
 	}
 
+	// A short rising two-note blip confirming the player has advanced from the title
+	// screen into the countdown.
+	public startConfirm(): void {
+		this.tone(523, 0.12, 'triangle', 0.14);
+		this.tone(784, 0.18, 'triangle', 0.14, 0.1);
+	}
+
 	public goBeep(): void {
 		this.tone(880, 0.6);
 	}

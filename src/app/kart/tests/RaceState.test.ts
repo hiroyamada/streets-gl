@@ -10,9 +10,51 @@ describe('RaceState', () => {
 		expect(RaceState.formatTime(599999)).toBe(`9'59"99`);
 	});
 
+	test('reset lands on the title screen, not the countdown', () => {
+		const race = new RaceState(3);
+		race.reset(1000);
+		expect(race.phase).toBe(RacePhase.Title);
+	});
+
+	test('getTitleElapsed increases with time', () => {
+		const race = new RaceState(3);
+		race.reset(1000);
+		expect(race.getTitleElapsed(1000)).toBe(0);
+		expect(race.getTitleElapsed(1500)).toBe(500);
+		expect(race.getTitleElapsed(2400)).toBe(1400);
+	});
+
+	test('beginCountdown moves Title to Countdown and starts the countdown at 3', () => {
+		const race = new RaceState(3);
+		race.reset(1000);
+		expect(race.beginCountdown(1750)).toBe(true);
+		expect(race.phase).toBe(RacePhase.Countdown);
+		expect(race.getCountdownValue(1750)).toBe(3);
+	});
+
+	test('beginCountdown is a no-op outside of Title', () => {
+		const race = new RaceState(3);
+		race.reset(0);
+		race.beginCountdown(0);
+		expect(race.beginCountdown(100)).toBe(false);
+		expect(race.phase).toBe(RacePhase.Countdown);
+
+		race.start(200);
+		expect(race.beginCountdown(300)).toBe(false);
+		expect(race.phase).toBe(RacePhase.Racing);
+
+		race.recordSplit(400);
+		race.recordSplit(500);
+		race.recordSplit(600);
+		race.finish(600);
+		expect(race.beginCountdown(700)).toBe(false);
+		expect(race.phase).toBe(RacePhase.Finished);
+	});
+
 	test('counts down 3, 2, 1 then go', () => {
 		const race = new RaceState(3);
 		race.reset(1000);
+		race.beginCountdown(1000);
 		expect(race.getCountdownValue(1000)).toBe(3);
 		expect(race.getCountdownValue(1999)).toBe(3);
 		expect(race.getCountdownValue(2000)).toBe(2);
@@ -24,6 +66,7 @@ describe('RaceState', () => {
 	test('records splits in order and finishes after the last star', () => {
 		const race = new RaceState(3);
 		race.reset(0);
+		race.beginCountdown(0);
 		race.start(1000);
 		expect(race.getElapsed(1500)).toBe(500);
 		expect(race.recordSplit(2000)).toBe(1000);
@@ -39,9 +82,11 @@ describe('RaceState', () => {
 
 		// A slower second run is not a new best; a faster one is.
 		race.reset(10000);
+		race.beginCountdown(10000);
 		race.start(10000);
 		expect(race.finish(14000)).toBe(false);
 		race.reset(20000);
+		race.beginCountdown(20000);
 		race.start(20000);
 		expect(race.finish(22000)).toBe(true);
 		expect(race.bestTime).toBe(2000);

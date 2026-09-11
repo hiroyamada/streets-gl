@@ -25,11 +25,30 @@ const Styles = `
 #hud .hud-finish td { padding: 2px 14px; text-align: left; }
 #hud .hud-finish td:last-child { text-align: right; }
 #hud .hud-finish .restart { font-size: 18px; margin-top: 12px; opacity: .9; }
+#hud .hud-title { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; }
+#hud .hud-title.show { display: flex; }
+#hud .hud-title .panel { background: rgba(10,10,30,.55); border-radius: 14px; padding: 30px 46px;
+	display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 88vw; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+#hud .hud-title .game-title { font-size: 62px; color: #ffd83d; text-align: center; margin-bottom: 2px; }
+#hud .hud-title .course { font-size: 20px; }
+#hud .hud-title .kart-line { font-size: 18px; margin-top: 4px; }
+#hud .hud-title .best { font-size: 18px; color: #7dff9a; margin-top: 4px; }
+#hud .hud-title ol { font-size: 17px; font-style: normal; text-align: left; margin: 8px 0 0; padding-left: 22px; }
+#hud .hud-title .prompt { font-size: 26px; color: #ffd83d; margin-top: 14px; animation: hudPulse 1.4s ease-in-out infinite; }
+#hud .hud-title .hint2 { font-size: 13px; font-style: normal; opacity: .85; margin-top: 4px; }
+@keyframes hudPulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @keyframes hudPop { 0% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(.9); opacity: 0; } }
 @keyframes hudBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes hudSplit { 0% { opacity: 0; transform: translateY(-6px); } 15% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes hudFloat { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
 `;
+
+export interface TitleScreenOptions {
+	courseName: string;
+	starNames: string[];
+	kartName: string;
+	bestTimeText: string | null;
+}
 
 export default class HUD {
 	private readonly root: HTMLDivElement;
@@ -44,6 +63,9 @@ export default class HUD {
 	private readonly finishTotalEl: HTMLDivElement;
 	private readonly finishBestEl: HTMLDivElement;
 	private readonly finishTableEl: HTMLTableElement;
+	private readonly titleEl: HTMLDivElement;
+	private readonly titleBestEl: HTMLDivElement;
+	private readonly titleStarsEl: HTMLOListElement;
 	private lastStarsText: string = '';
 	private lastTimerText: string = '';
 	private lastNextText: string = '';
@@ -80,9 +102,13 @@ export default class HUD {
 		restart.textContent = 'Press Space to race again';
 		this.finishEl.append(title, this.finishTotalEl, this.finishBestEl, this.finishTableEl, restart);
 
+		this.titleEl = HUD.element('div', 'hud-title');
+		this.titleBestEl = HUD.element('div', 'best');
+		this.titleStarsEl = document.createElement('ol');
+
 		this.root.append(
 			this.starsEl, this.timerEl, this.splitEl, this.nextEl, this.arrowEl,
-			this.countdownEl, hint, this.soundEl, this.finishEl
+			this.countdownEl, hint, this.soundEl, this.finishEl, this.titleEl
 		);
 
 		const container = document.getElementById('wrapper') ?? document.body;
@@ -197,6 +223,49 @@ export default class HUD {
 
 	public hideFinish(): void {
 		this.finishEl.classList.remove('show');
+	}
+
+	public showTitle(options: TitleScreenOptions): void {
+		this.titleEl.textContent = '';
+
+		const panel = HUD.element('div', 'panel');
+
+		const gameTitle = HUD.element('div', 'game-title');
+		gameTitle.textContent = 'SHIBUYA KART';
+
+		const course = HUD.element('div', 'course');
+		course.textContent = `COURSE — ${options.courseName.toUpperCase()}`;
+
+		this.titleStarsEl.textContent = '';
+		for (const name of options.starNames) {
+			const item = document.createElement('li');
+			item.textContent = name;
+			this.titleStarsEl.appendChild(item);
+		}
+
+		const kartLine = HUD.element('div', 'kart-line');
+		kartLine.textContent = `KART — ${options.kartName.toUpperCase()}`;
+
+		panel.append(gameTitle, course, this.titleStarsEl, kartLine);
+
+		if (options.bestTimeText !== null) {
+			this.titleBestEl.textContent = `BEST TIME ${options.bestTimeText}`;
+			panel.append(this.titleBestEl);
+		}
+
+		const prompt = HUD.element('div', 'prompt');
+		prompt.textContent = 'PRESS SPACE TO START';
+
+		const hint2 = HUD.element('div', 'hint2');
+		hint2.textContent = 'R restarts · WASD / arrows drive · hold Space while turning to drift';
+
+		panel.append(prompt, hint2);
+		this.titleEl.appendChild(panel);
+		this.titleEl.classList.add('show');
+	}
+
+	public hideTitle(): void {
+		this.titleEl.classList.remove('show');
 	}
 
 	public setEngineSound(enabled: boolean): void {
