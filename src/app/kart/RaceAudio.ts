@@ -93,6 +93,18 @@ export default class RaceAudio {
 		this.tone(300, 0.35, 'sawtooth', 0.08, 0, 1000);
 	}
 
+	// Mushroom power-up: three quick ascending tones.
+	public mushroomSound(): void {
+		this.tone(400, 0.1, 'square', 0.12, 0);
+		this.tone(800, 0.1, 'square', 0.12, 0.07);
+		this.tone(1200, 0.14, 'square', 0.12, 0.14);
+	}
+
+	// Pressing the mushroom key with none left.
+	public emptySound(): void {
+		this.tone(150, 0.08, 'triangle', 0.06);
+	}
+
 	public falseStartSound(): void {
 		this.tone(200, 0.4, 'sawtooth', 0.1, 0, 120);
 	}

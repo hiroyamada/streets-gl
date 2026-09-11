@@ -16,6 +16,8 @@ const DriftSlideRate = 3;
 const GripRate = 12;
 const BoostSpeed = 8;
 const BoostDuration = 1;
+const MushroomBoostSpeed = 14;
+const MushroomBoostDuration = 1.6;
 const CollisionProbeDistance = 1.2;
 const WallSlideFriction = 0.9;
 const WallBounce = 0.25;
@@ -35,6 +37,8 @@ export default class KartController {
 	public isDrifting: boolean = false;
 	public driftTime: number = 0;
 	public boostTime: number = 0;
+	public boostDuration: number = BoostDuration;
+	public boostSpeed: number = BoostSpeed;
 	public hopHeight: number = 0;
 	public hopVelocity: number = 0;
 	public hopRequested: boolean = false;
@@ -71,6 +75,8 @@ export default class KartController {
 		this.isDrifting = false;
 		this.driftTime = 0;
 		this.boostTime = 0;
+		this.boostDuration = BoostDuration;
+		this.boostSpeed = BoostSpeed;
 		this.hopHeight = 0;
 		this.hopVelocity = 0;
 		this.hopRequested = false;
@@ -98,7 +104,28 @@ export default class KartController {
 
 	public applyBoost(): void {
 		this.boostTime = BoostDuration;
+		this.boostDuration = BoostDuration;
+		this.boostSpeed = BoostSpeed;
 		this.boostStarted = true;
+	}
+
+	// Mushroom item: a stronger, longer boost than the drift mini-turbo. Immediately kicks
+	// the current speed up toward the new boosted max so it feels like a real kick even from
+	// a near-stop, rather than only raising the ceiling for future acceleration.
+	public applyMushroomBoost(): void {
+		this.boostTime = MushroomBoostDuration;
+		this.boostDuration = MushroomBoostDuration;
+		this.boostSpeed = MushroomBoostSpeed;
+
+		const kickSpeed = this.maxSpeed * 0.6;
+
+		if (this.speed >= 0) {
+			this.speed = Math.max(this.speed, kickSpeed);
+		}
+
+		// The drift-boost rising edge (handled in KartSystem.update) plays a different sound;
+		// the mushroom plays its own sound explicitly, so don't trigger that edge here.
+		this.boostStarted = false;
 	}
 
 	public applyThrottlePenalty(seconds: number): void {
@@ -211,8 +238,8 @@ export default class KartController {
 		}
 
 		const steerMultiplier = this.updateDrift(dt, maxSpeed);
-		const boostFactor = this.boostTime / BoostDuration;
-		const boostedMaxSpeed = maxSpeed + BoostSpeed * this.worldScale * boostFactor;
+		const boostFactor = this.boostTime / this.boostDuration;
+		const boostedMaxSpeed = maxSpeed + this.boostSpeed * this.worldScale * boostFactor;
 
 		if (boostFactor > 0 && this.speed >= 0) {
 			this.speed = Math.max(this.speed, boostedMaxSpeed);

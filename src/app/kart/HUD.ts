@@ -1,4 +1,4 @@
-import RaceState from "~/app/kart/RaceState";
+import RaceState, {MaxMushrooms} from "~/app/kart/RaceState";
 
 export const ArrowSize = 88;
 
@@ -11,6 +11,19 @@ const Styles = `
 #hud .hud-timer { position: absolute; top: 20px; right: 28px; font-size: 60px; letter-spacing: 1px; }
 #hud .hud-split { position: absolute; top: 96px; right: 30px; font-size: 32px; color: #7dff9a; opacity: 0; }
 #hud .hud-split.show { animation: hudSplit 1.6s ease-out; }
+#hud .hud-mushrooms { position: absolute; top: 96px; left: 26px; font-size: 20px; display: flex; align-items: center; gap: 8px;
+	background: rgba(10,10,30,.4); border-radius: 10px; padding: 6px 12px; }
+#hud .hud-mushrooms.empty { opacity: .5; }
+#hud .hud-mushrooms.pulse { animation: hudMushroomPulse .3s ease-out; }
+#hud .hud-mushrooms .key { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px;
+	padding: 0 4px; border: 2px solid #fff; border-radius: 6px; font-family: 'Inter', system-ui, sans-serif; font-style: normal;
+	font-weight: 700; font-size: 15px; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+#hud .hud-mushrooms .label { font-size: 15px; font-style: normal; opacity: .9; }
+#hud .hud-mushrooms .icons { display: inline-flex; gap: 3px; font-size: 20px; }
+#hud .hud-mushrooms .icons span { opacity: 1; filter: none; }
+#hud .hud-mushrooms .icons span.used { opacity: .25; filter: grayscale(1); }
+#hud .hud-mushrooms .count { font-size: 18px; }
+@keyframes hudMushroomPulse { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
 #hud .hud-next { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); font-size: 36px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 #hud .hud-next span { color: #ffd83d; }
 #hud .hud-nav { display: inline-block; font-size: 1.8em; color: #ffd83d; line-height: 1; vertical-align: middle; will-change: transform; }
@@ -80,12 +93,15 @@ export interface TitleScreenOptions {
 
 export default class HUD {
 	private static readonly DriveHint: string =
-		'WASD / arrows drive · hold Space while turning to drift, release to boost · R restart · C free camera · M engine sound · music in Settings';
+		'WASD / arrows drive · hold Space while turning to drift, release to boost · Q mushroom · R restart · C free camera · M engine sound · music in Settings';
 	private static readonly FinishHint: string = 'Enter to save · Esc then Space to race again';
 	private readonly root: HTMLDivElement;
 	private readonly starsEl: HTMLDivElement;
 	private readonly timerEl: HTMLDivElement;
 	private readonly splitEl: HTMLDivElement;
+	private readonly mushroomsEl: HTMLDivElement;
+	private readonly mushroomIconsEl: HTMLDivElement;
+	private readonly mushroomCountEl: HTMLDivElement;
 	private readonly nextEl: HTMLDivElement;
 	private readonly navEl: HTMLDivElement;
 	private readonly nextTextEl: HTMLDivElement;
@@ -113,6 +129,7 @@ export default class HUD {
 	private lastNavAngle: number = null;
 	private navEnabled: boolean = true;
 	private hasNextStar: boolean = false;
+	private lastMushroomCount: number = MaxMushrooms;
 
 	public constructor() {
 		const style = document.createElement('style');
@@ -125,6 +142,16 @@ export default class HUD {
 		this.starsEl = HUD.element('div', 'hud-stars');
 		this.timerEl = HUD.element('div', 'hud-timer');
 		this.splitEl = HUD.element('div', 'hud-split');
+
+		this.mushroomsEl = HUD.element('div', 'hud-mushrooms');
+		const mushroomKey = HUD.element('div', 'key');
+		mushroomKey.textContent = 'Q';
+		const mushroomLabel = HUD.element('div', 'label');
+		mushroomLabel.textContent = 'Mushroom';
+		this.mushroomIconsEl = HUD.element('div', 'icons');
+		this.mushroomCountEl = HUD.element('div', 'count');
+		this.mushroomsEl.append(mushroomKey, mushroomLabel, this.mushroomIconsEl, this.mushroomCountEl);
+
 		this.nextEl = HUD.element('div', 'hud-next');
 		this.navEl = HUD.element('div', 'hud-nav');
 		this.navEl.textContent = '➤';
@@ -167,7 +194,7 @@ export default class HUD {
 		this.titleStarsEl = document.createElement('ol');
 
 		this.root.append(
-			this.starsEl, this.timerEl, this.splitEl, this.nextEl, this.arrowEl,
+			this.starsEl, this.timerEl, this.splitEl, this.mushroomsEl, this.nextEl, this.arrowEl,
 			this.countdownEl, this.hintEl, this.soundEl, this.finishEl, this.titleEl
 		);
 
@@ -177,6 +204,7 @@ export default class HUD {
 		this.setArrow(false, 0, 0, 0);
 		this.setEngineSound(false);
 		this.nextEl.style.display = 'none';
+		this.setMushrooms(MaxMushrooms);
 	}
 
 	private static element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string): HTMLElementTagNameMap[K] {
@@ -222,6 +250,33 @@ export default class HUD {
 			if (changed) {
 				HUD.restartAnimation(this.starsEl, 'bump');
 			}
+		}
+	}
+
+	// Renders the mushroom widget: MaxMushrooms icon slots (dimmed once used), the numeric
+	// count, and a brief pulse to confirm a use. Dims the whole widget once empty.
+	public setMushrooms(count: number): void {
+		const used = count < this.lastMushroomCount;
+
+		this.mushroomIconsEl.textContent = '';
+
+		for (let i = 0; i < MaxMushrooms; i++) {
+			const icon = document.createElement('span');
+			icon.textContent = '🍄';
+
+			if (i >= count) {
+				icon.classList.add('used');
+			}
+
+			this.mushroomIconsEl.appendChild(icon);
+		}
+
+		this.mushroomCountEl.textContent = `×${count}`;
+		this.mushroomsEl.classList.toggle('empty', count === 0);
+		this.lastMushroomCount = count;
+
+		if (used) {
+			HUD.restartAnimation(this.mushroomsEl, 'pulse');
 		}
 	}
 

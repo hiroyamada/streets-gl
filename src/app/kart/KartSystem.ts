@@ -141,6 +141,19 @@ export default class KartSystem extends System {
 			}
 		} else if (e.code === 'KeyM') {
 			this.hud.setEngineSound(this.audio.toggleEngine());
+		} else if (e.code === 'KeyQ') {
+			if (this.race.useMushroom()) {
+				const controller = this.controller;
+
+				if (controller) {
+					controller.applyMushroomBoost();
+				}
+
+				this.audio.mushroomSound();
+				this.hud.setMushrooms(this.race.mushrooms);
+			} else if (this.race.phase === RacePhase.Racing) {
+				this.audio.emptySound();
+			}
 		}
 	}
 
@@ -164,6 +177,7 @@ export default class KartSystem extends System {
 		this.hud.hideCountdown();
 		this.hud.setCount(0, this.stars.length);
 		this.hud.setTimer(RaceState.formatTime(0));
+		this.hud.setMushrooms(this.race.mushrooms);
 		this.updateActiveStar();
 		this.hud.showTitle({
 			courseName: CourseName,

@@ -8,6 +8,7 @@ export enum RacePhase {
 export const CountdownDuration = 3000;
 export const GoDisplayDuration = 900;
 export const CourseName = 'Shibuya Circuit';
+export const MaxMushrooms = 3;
 
 // Race bookkeeping: title screen, countdown, timer, split times. Times are in milliseconds.
 export default class RaceState {
@@ -19,6 +20,7 @@ export default class RaceState {
 	public splits: number[] = [];
 	public nextStarIndex: number = 0;
 	public falseStart: boolean = false;
+	public mushrooms: number = MaxMushrooms;
 	public readonly totalStars: number;
 
 	public constructor(totalStars: number) {
@@ -33,6 +35,19 @@ export default class RaceState {
 		this.splits = [];
 		this.nextStarIndex = 0;
 		this.falseStart = false;
+		this.mushrooms = MaxMushrooms;
+	}
+
+	// Uses one mushroom item if the player has any left and the race is actually in
+	// progress. Returns whether it succeeded so the caller can decide what to do.
+	public useMushroom(): boolean {
+		if (this.phase !== RacePhase.Racing || this.mushrooms === 0) {
+			return false;
+		}
+
+		this.mushrooms--;
+
+		return true;
 	}
 
 	// Milliseconds since the title screen appeared, for the cinematic camera.
