@@ -1,22 +1,24 @@
+export const ArrowSize = 88;
+
 const Styles = `
 #hud { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 10;
 	font-family: 'Russo One', 'Inter', system-ui, sans-serif; color: #fff; font-style: italic;
 	text-shadow: -2px -2px 0 #1a1a2e, 2px -2px 0 #1a1a2e, -2px 2px 0 #1a1a2e, 2px 2px 0 #1a1a2e, 0 4px 8px rgba(0,0,0,.6); }
-#hud .hud-stars { position: absolute; top: 18px; left: 22px; font-size: 40px; color: #ffd83d; }
+#hud .hud-stars { position: absolute; top: 20px; left: 26px; font-size: 60px; color: #ffd83d; }
 #hud .hud-stars.bump { animation: hudBump .35s ease-out; }
-#hud .hud-timer { position: absolute; top: 18px; right: 24px; font-size: 40px; letter-spacing: 1px; }
-#hud .hud-split { position: absolute; top: 70px; right: 26px; font-size: 22px; color: #7dff9a; opacity: 0; }
+#hud .hud-timer { position: absolute; top: 20px; right: 28px; font-size: 60px; letter-spacing: 1px; }
+#hud .hud-split { position: absolute; top: 96px; right: 30px; font-size: 32px; color: #7dff9a; opacity: 0; }
 #hud .hud-split.show { animation: hudSplit 1.6s ease-out; }
-#hud .hud-next { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 24px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+#hud .hud-next { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); font-size: 36px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 #hud .hud-next span { color: #ffd83d; }
-#hud .hud-nav { display: inline-block; font-size: 1.2em; color: #ffd83d; line-height: 1; will-change: transform; }
-#hud .hud-arrow { position: absolute; left: 0; top: 0; font-size: 44px; color: #ffd83d; line-height: 1; will-change: transform; }
+#hud .hud-nav { display: inline-block; font-size: 1.8em; color: #ffd83d; line-height: 1; vertical-align: middle; will-change: transform; }
+#hud .hud-arrow { position: absolute; left: 0; top: 0; font-size: ${ArrowSize}px; color: #ffd83d; line-height: 1; will-change: transform; }
 #hud .hud-countdown { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font-size: 160px; color: #ffd83d; opacity: 0; }
 #hud .hud-countdown.go { color: #7dff9a; }
 #hud .hud-countdown.pop { animation: hudPop .9s ease-out; }
-#hud .hud-float { position: absolute; top: 60px; left: 30px; font-size: 30px; color: #ffd83d; animation: hudFloat 1s ease-out forwards; }
-#hud .hud-hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 14px; font-style: normal; opacity: .85; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
-#hud .hud-sound { position: absolute; bottom: 14px; right: 22px; font-size: 14px; font-style: normal; opacity: .8; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
+#hud .hud-float { position: absolute; top: 92px; left: 34px; font-size: 44px; color: #ffd83d; animation: hudFloat 1s ease-out forwards; }
+#hud .hud-hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 18px; font-style: normal; opacity: .85; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
+#hud .hud-sound { position: absolute; bottom: 14px; right: 22px; font-size: 18px; font-style: normal; opacity: .8; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
 #hud .hud-finish { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; background: rgba(10,10,30,.55); }
 #hud .hud-finish.show { display: flex; }
 #hud .hud-finish .title { font-size: 96px; color: #ffd83d; animation: hudPop .9s ease-out; }
@@ -41,7 +43,7 @@ const Styles = `
 @keyframes hudPop { 0% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(.9); opacity: 0; } }
 @keyframes hudBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes hudSplit { 0% { opacity: 0; transform: translateY(-6px); } 15% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes hudFloat { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+@keyframes hudFloat { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-73px); } }
 `;
 
 export interface TitleScreenOptions {
@@ -213,7 +215,7 @@ export default class HUD {
 		}
 
 		if (visible) {
-			this.arrowEl.style.transform = `translate(${x - 22}px, ${y - 22}px) rotate(${angle}rad)`;
+			this.arrowEl.style.transform = `translate(${x - ArrowSize / 2}px, ${y - ArrowSize / 2}px) rotate(${angle}rad)`;
 		}
 	}
 
