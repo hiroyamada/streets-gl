@@ -7,8 +7,9 @@ const Styles = `
 #hud .hud-timer { position: absolute; top: 18px; right: 24px; font-size: 40px; letter-spacing: 1px; }
 #hud .hud-split { position: absolute; top: 70px; right: 26px; font-size: 22px; color: #7dff9a; opacity: 0; }
 #hud .hud-split.show { animation: hudSplit 1.6s ease-out; }
-#hud .hud-next { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 24px; white-space: nowrap; }
+#hud .hud-next { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 24px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 #hud .hud-next span { color: #ffd83d; }
+#hud .hud-nav { display: inline-block; font-size: 1.2em; color: #ffd83d; line-height: 1; will-change: transform; }
 #hud .hud-arrow { position: absolute; left: 0; top: 0; font-size: 44px; color: #ffd83d; line-height: 1; will-change: transform; }
 #hud .hud-countdown { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font-size: 160px; color: #ffd83d; opacity: 0; }
 #hud .hud-countdown.go { color: #7dff9a; }
@@ -56,6 +57,8 @@ export default class HUD {
 	private readonly timerEl: HTMLDivElement;
 	private readonly splitEl: HTMLDivElement;
 	private readonly nextEl: HTMLDivElement;
+	private readonly navEl: HTMLDivElement;
+	private readonly nextTextEl: HTMLDivElement;
 	private readonly arrowEl: HTMLDivElement;
 	private readonly countdownEl: HTMLDivElement;
 	private readonly soundEl: HTMLDivElement;
@@ -71,6 +74,9 @@ export default class HUD {
 	private lastNextText: string = '';
 	private lastCountdownText: string = '';
 	private arrowVisible: boolean = true;
+	private lastNavAngle: number = null;
+	private navEnabled: boolean = true;
+	private hasNextStar: boolean = false;
 
 	public constructor() {
 		const style = document.createElement('style');
@@ -84,6 +90,10 @@ export default class HUD {
 		this.timerEl = HUD.element('div', 'hud-timer');
 		this.splitEl = HUD.element('div', 'hud-split');
 		this.nextEl = HUD.element('div', 'hud-next');
+		this.navEl = HUD.element('div', 'hud-nav');
+		this.navEl.textContent = '➤';
+		this.nextTextEl = HUD.element('div', 'hud-next-text');
+		this.nextEl.append(this.navEl, this.nextTextEl);
 		this.arrowEl = HUD.element('div', 'hud-arrow');
 		this.arrowEl.textContent = '➤';
 		this.countdownEl = HUD.element('div', 'hud-countdown');
@@ -116,6 +126,7 @@ export default class HUD {
 
 		this.setArrow(false, 0, 0, 0);
 		this.setEngineSound(false);
+		this.nextEl.style.display = 'none';
 	}
 
 	private static element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string): HTMLElementTagNameMap[K] {
@@ -153,16 +164,43 @@ export default class HUD {
 
 	public setNext(name: string, metres: number): void {
 		const text = name === null ? '' : `NEXT ▸ ${name} · ${Math.round(metres)} m`;
+		const hasNextStar = name !== null;
+
+		if (hasNextStar !== this.hasNextStar) {
+			this.hasNextStar = hasNextStar;
+			this.nextEl.style.display = hasNextStar ? 'flex' : 'none';
+		}
 
 		if (text !== this.lastNextText) {
 			this.lastNextText = text;
-			this.nextEl.textContent = '';
+			this.nextTextEl.textContent = '';
 
 			if (name !== null) {
 				const label = document.createElement('span');
 				label.textContent = 'NEXT ▸ ';
-				this.nextEl.append(label, `${name} · ${Math.round(metres)} m`);
+				this.nextTextEl.append(label, `${name} · ${Math.round(metres)} m`);
 			}
+		}
+	}
+
+	// Always-visible compass-style arrow pointing toward the next star, shown next to
+	// hud-next. angle is in radians: 0 = straight ahead (arrow points up), positive =
+	// clockwise (star to the right). The glyph itself points right at rotate(0), so we
+	// offset by -PI/2 to make 0 point up. No transition is applied so the arrow never
+	// spins the long way around the ±PI wrap.
+	public setNav(angle: number): void {
+		if (this.lastNavAngle !== null && Math.abs(angle - this.lastNavAngle) < 0.005) {
+			return;
+		}
+
+		this.lastNavAngle = angle;
+		this.navEl.style.transform = `rotate(${angle - Math.PI / 2}rad)`;
+	}
+
+	public setNavEnabled(enabled: boolean): void {
+		if (enabled !== this.navEnabled) {
+			this.navEnabled = enabled;
+			this.navEl.style.display = enabled ? 'inline-block' : 'none';
 		}
 	}
 

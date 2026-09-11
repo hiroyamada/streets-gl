@@ -82,6 +82,13 @@ const Config = {
 			selectRangeDefault: 60,
 			category: 'sound'
 		},
+		starArrow: {
+			label: 'Star direction arrow',
+			status: ['off', 'on'],
+			statusLabels: ['Disabled', 'Enabled'],
+			statusDefault: 'on',
+			category: 'general'
+		},
 		/*airTraffic: {
 			label: 'Real-time air traffic',
 			status: ['off', 'on'],
