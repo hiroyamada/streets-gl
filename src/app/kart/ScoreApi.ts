@@ -4,6 +4,7 @@ export interface SubmittedScore {
 	timeMs: number;
 	createdAt: string;
 	rank: number;
+	editToken: string;
 }
 
 export interface ScoreEntry {
@@ -70,4 +71,23 @@ export async function fetchTopScores(limit: number): Promise<ScoreEntry[]> {
 	}
 
 	return (await parseJsonBody<ScoreEntry[]>(response)) ?? [];
+}
+
+// Returns null when the rename succeeded but the server didn't echo back the stored
+// score (a bodyless 2xx) - callers should treat that as a successful rename with no
+// payload, not a failure.
+export async function updateScoreName(
+	id: number, editToken: string, name: string
+): Promise<(ScoreEntry & {rank: number}) | null> {
+	const response = await fetch(`/api/scores/${encodeURIComponent(id.toString())}`, {
+		method: 'PATCH',
+		headers: {'Content-Type': 'application/json'},
+		body: JSON.stringify({name, editToken})
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response));
+	}
+
+	return await parseJsonBody<ScoreEntry & {rank: number}>(response);
 }

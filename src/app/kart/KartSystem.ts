@@ -147,10 +147,6 @@ export default class KartSystem extends System {
 	public restart(): void {
 		const now = performance.now();
 
-		if (this.race.phase === RacePhase.Finished) {
-			this.scoreSubmission.submitOnRestartIfNeeded();
-		}
-
 		for (const star of this.stars) {
 			star.reset();
 		}
