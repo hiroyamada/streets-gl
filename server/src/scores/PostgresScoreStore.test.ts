@@ -1,0 +1,65 @@
+import {newDb} from 'pg-mem';
+import PostgresScoreStore from './PostgresScoreStore';
+
+function createStore(): PostgresScoreStore {
+	const db = newDb();
+	const {Pool} = db.adapters.createPg();
+
+	return new PostgresScoreStore(new Pool());
+}
+
+describe('PostgresScoreStore', () => {
+	test('init is idempotent', async () => {
+		const store = createStore();
+
+		await store.init();
+		await store.init();
+
+		const scores = await store.list(10);
+
+		expect(scores).toEqual([]);
+	});
+
+	test('add returns a numeric id and an ISO createdAt', async () => {
+		const store = createStore();
+
+		await store.init();
+
+		const score = await store.add({name: 'Alice', timeMs: 1000});
+
+		expect(typeof score.id).toBe('number');
+		expect(score.name).toBe('Alice');
+		expect(score.timeMs).toBe(1000);
+		expect(() => new Date(score.createdAt).toISOString()).not.toThrow();
+		expect(new Date(score.createdAt).toISOString()).toBe(score.createdAt);
+	});
+
+	test('list orders by timeMs ascending, ties broken by id', async () => {
+		const store = createStore();
+
+		await store.init();
+
+		await store.add({name: 'Slow', timeMs: 5000});
+		await store.add({name: 'Fast', timeMs: 1000});
+		await store.add({name: 'AlsoFast', timeMs: 1000});
+
+		const scores = await store.list(10);
+
+		expect(scores.map(s => s.name)).toEqual(['Fast', 'AlsoFast', 'Slow']);
+	});
+
+	test('list respects the limit', async () => {
+		const store = createStore();
+
+		await store.init();
+
+		for (let i = 0; i < 5; i++) {
+			await store.add({name: `Player${i}`, timeMs: 1000 + i});
+		}
+
+		const scores = await store.list(2);
+
+		expect(scores).toHaveLength(2);
+		expect(scores.map(s => s.timeMs)).toEqual([1000, 1001]);
+	});
+});
