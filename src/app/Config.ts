@@ -5,7 +5,7 @@ const Config = {
 	MaxConcurrentTiles: 150,
 	MaxTilesPerWorker: 1,
 	WorkersCount: Math.min(4, navigator.hardwareConcurrency),
-	StartPosition: {lat: 40.76494, lon: -73.97860, pitch: 45, yaw: 0, distance: 2000},
+	StartPosition: {lat: 35.6595, lon: 139.7005, pitch: 45, yaw: 0, distance: 600},
 	MinCameraDistance: 10,
 	MaxCameraDistance: 4000,
 	SlippyMapTransitionDuration: 400,

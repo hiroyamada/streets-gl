@@ -1,0 +1,81 @@
+import ColoredBox from "~/app/kart/ColoredBox";
+import Vec3 from "~/lib/math/Vec3";
+import MathUtils from "~/lib/math/MathUtils";
+
+export interface StarDefinition {
+	name: string;
+	lat: number;
+	lon: number;
+}
+
+// Collected in this order. Kept to three stars so a run takes about a minute.
+// Coordinates were hand-picked by driving the course in debug scouting mode
+// and verified against OpenStreetMap to sit on drivable street, clear of
+// building footprints.
+export const StarDefinitions: StarDefinition[] = [
+	{name: 'Dogenzaka', lat: 35.65949, lon: 139.69948},
+	{name: 'Don Quijote', lat: 35.66049, lon: 139.69693},
+	{name: 'PARCO', lat: 35.66222, lon: 139.69733}
+];
+
+const ActiveColor = new Vec3(1.0, 0.85, 0.2);
+const ActiveGlow = new Vec3(2.0, 1.6, 0.4);
+const InactiveColor = new Vec3(0.55, 0.45, 0.2);
+const InactiveGlow = new Vec3(0.15, 0.12, 0.03);
+const BeamHeight = 60;
+const BeamWidth = 0.5;
+
+export default class Star {
+	public readonly name: string;
+	public readonly x: number;
+	public readonly z: number;
+	public readonly box: ColoredBox;
+	public readonly beam: ColoredBox;
+	public readonly phase: number;
+	public collected: boolean = false;
+	public baseHeight: number = 0;
+	public popStart: number = null;
+
+	public constructor(name: string, x: number, z: number, box: ColoredBox, beam: ColoredBox, phase: number) {
+		this.name = name;
+		this.x = x;
+		this.z = z;
+		this.box = box;
+		this.beam = beam;
+		this.phase = phase;
+	}
+
+	public static create(def: StarDefinition, worldScale: number, phase: number): Star {
+		const position = MathUtils.degrees2meters(def.lat, def.lon);
+		const size = 1.5 * worldScale;
+
+		const box = new ColoredBox(size, size, size, Vec3.clone(ActiveColor), Vec3.clone(ActiveGlow));
+		box.rotation.x = Math.PI / 4;
+		box.rotation.z = Math.PI / 4;
+
+		const beam = new ColoredBox(
+			BeamWidth * worldScale, BeamHeight * worldScale, BeamWidth * worldScale,
+			new Vec3(1.0, 0.9, 0.4), new Vec3(1.5, 1.2, 0.3)
+		);
+		beam.visible = false;
+
+		return new Star(def.name, position.x, position.y, box, beam, phase);
+	}
+
+	// The active (next) star is bright and marked with a light beam; others are dimmed.
+	public setActive(active: boolean): void {
+		const color = active ? ActiveColor : InactiveColor;
+		const glow = active ? ActiveGlow : InactiveGlow;
+
+		this.box.color.set(color.x, color.y, color.z);
+		this.box.glow.set(glow.x, glow.y, glow.z);
+		this.beam.visible = active && !this.collected;
+	}
+
+	public reset(): void {
+		this.collected = false;
+		this.popStart = null;
+		this.box.visible = true;
+		this.box.scale.set(1, 1, 1);
+	}
+}
