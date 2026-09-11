@@ -25,7 +25,6 @@ const Styles = `
 #hud .hud-finish.show { display: flex; }
 #hud .hud-finish .title { font-size: 96px; color: #ffd83d; animation: hudPop .9s ease-out; }
 #hud .hud-finish .total { font-size: 48px; }
-#hud .hud-finish .best { font-size: 22px; color: #7dff9a; }
 #hud .hud-finish table { font-size: 18px; border-collapse: collapse; margin-top: 6px; }
 #hud .hud-finish td { padding: 2px 14px; text-align: left; }
 #hud .hud-finish td:last-child { text-align: right; }
@@ -57,7 +56,6 @@ const Styles = `
 #hud .hud-title .tagline { font-size: clamp(12px, 2.4vw, 16px); font-style: normal; opacity: .75; text-align: center; }
 #hud .hud-title .course { font-size: clamp(15px, 3vw, 20px); text-align: center; }
 #hud .hud-title .kart-line { font-size: 18px; text-align: center; }
-#hud .hud-title .best { font-size: 18px; color: #7dff9a; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
 #hud .hud-title ol { counter-reset: star-count; list-style: none; font-size: 17px; font-style: normal;
 	text-align: left; margin: 0; padding: 0; display: inline-flex; flex-direction: column; gap: 4px; }
 #hud .hud-title ol li { counter-increment: star-count; }
@@ -78,7 +76,6 @@ export interface TitleScreenOptions {
 	courseName: string;
 	starNames: string[];
 	kartName: string;
-	bestTimeText: string | null;
 }
 
 export default class HUD {
@@ -97,7 +94,6 @@ export default class HUD {
 	private readonly soundEl: HTMLDivElement;
 	private readonly finishEl: HTMLDivElement;
 	private readonly finishTotalEl: HTMLDivElement;
-	private readonly finishBestEl: HTMLDivElement;
 	private readonly finishTableEl: HTMLTableElement;
 	private readonly hintEl: HTMLDivElement;
 	private readonly scoreEl: HTMLDivElement;
@@ -108,7 +104,6 @@ export default class HUD {
 	private readonly scoreResultEl: HTMLDivElement;
 	private readonly leaderboardEl: HTMLTableElement;
 	private readonly titleEl: HTMLDivElement;
-	private readonly titleBestEl: HTMLDivElement;
 	private readonly titleStarsEl: HTMLOListElement;
 	private lastStarsText: string = '';
 	private lastTimerText: string = '';
@@ -147,7 +142,6 @@ export default class HUD {
 		const title = HUD.element('div', 'title');
 		title.textContent = 'FINISH!';
 		this.finishTotalEl = HUD.element('div', 'total');
-		this.finishBestEl = HUD.element('div', 'best');
 		this.finishTableEl = document.createElement('table');
 
 		this.scoreEl = HUD.element('div', 'hud-score');
@@ -167,10 +161,9 @@ export default class HUD {
 
 		this.restrictKeysToInput(this.scoreInputEl);
 
-		this.finishEl.append(title, this.finishTotalEl, this.finishBestEl, this.finishTableEl, this.scoreEl);
+		this.finishEl.append(title, this.finishTotalEl, this.finishTableEl, this.scoreEl);
 
 		this.titleEl = HUD.element('div', 'hud-title');
-		this.titleBestEl = HUD.element('div', 'best');
 		this.titleStarsEl = document.createElement('ol');
 
 		this.root.append(
@@ -322,9 +315,8 @@ export default class HUD {
 		el.addEventListener('animationend', () => el.remove());
 	}
 
-	public showFinish(totalText: string, splits: {name: string; text: string}[], bestText: string, isNewBest: boolean): void {
+	public showFinish(totalText: string, splits: {name: string; text: string}[]): void {
 		this.finishTotalEl.textContent = `TIME ${totalText}`;
-		this.finishBestEl.textContent = isNewBest ? 'NEW BEST TIME!' : `Best ${bestText}`;
 		this.finishTableEl.textContent = '';
 
 		for (let i = 0; i < splits.length; i++) {
@@ -438,19 +430,11 @@ export default class HUD {
 			this.titleStarsEl.appendChild(item);
 		}
 
-		const courseGroup = HUD.element('div', 'group');
-		courseGroup.append(course, this.titleStarsEl);
-
 		const kartLine = HUD.element('div', 'kart-line');
 		kartLine.textContent = `KART — ${options.kartName.toUpperCase()}`;
 
-		const kartGroup = HUD.element('div', 'group');
-		kartGroup.append(kartLine);
-
-		if (options.bestTimeText !== null) {
-			this.titleBestEl.textContent = `BEST TIME ${options.bestTimeText}`;
-			kartGroup.append(this.titleBestEl);
-		}
+		const courseGroup = HUD.element('div', 'group');
+		courseGroup.append(course, this.titleStarsEl, kartLine);
 
 		const prompt = HUD.element('div', 'prompt');
 		prompt.textContent = 'PRESS SPACE TO START';
@@ -461,7 +445,7 @@ export default class HUD {
 		const promptGroup = HUD.element('div', 'group');
 		promptGroup.append(prompt, hint2);
 
-		panel.append(titleGroup, courseGroup, kartGroup, promptGroup);
+		panel.append(titleGroup, courseGroup, promptGroup);
 		this.titleEl.appendChild(panel);
 		this.titleEl.classList.add('show');
 	}
