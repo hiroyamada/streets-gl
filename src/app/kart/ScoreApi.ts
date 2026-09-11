@@ -4,6 +4,7 @@ export interface SubmittedScore {
 	timeMs: number;
 	createdAt: string;
 	rank: number;
+	editToken: string;
 }
 
 export interface ScoreEntry {
@@ -49,4 +50,20 @@ export async function fetchTopScores(limit: number): Promise<ScoreEntry[]> {
 	}
 
 	return await response.json() as ScoreEntry[];
+}
+
+export async function updateScoreName(
+	id: number, editToken: string, name: string
+): Promise<ScoreEntry & {rank: number}> {
+	const response = await fetch(`/api/scores/${encodeURIComponent(id.toString())}`, {
+		method: 'PATCH',
+		headers: {'Content-Type': 'application/json'},
+		body: JSON.stringify({name, editToken})
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response));
+	}
+
+	return await response.json() as ScoreEntry & {rank: number};
 }
