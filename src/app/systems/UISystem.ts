@@ -89,17 +89,11 @@ export default class UISystem extends System {
 
 		const actions: UIActions = {
 			updateRenderGraph: () => this.updateRenderGraph(),
-			goToLatLon: (lat: number, lon: number): void => {
-				this.systemManager.getSystem(ControlsSystem).setLatLon(lat, lon);
-			},
 			goToState: (lat: number, lon: number, pitch: number, yaw: number, distance: number): void => {
 				this.systemManager.getSystem(ControlsSystem).setState(lat, lon, pitch, yaw, distance);
 			},
 			lookAtNorth: () => {
 				this.systemManager.getSystem(ControlsSystem).lookAtNorth();
-			},
-			setTime: (time: number) => {
-				this.ui.setStateFieldValue('mapTime', time);
 			},
 			resetSettings: () => settingsSystem.resetSettings(),
 			setOverpassEndpoints: (endpoints: OverpassEndpoint[]) => {

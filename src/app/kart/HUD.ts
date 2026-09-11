@@ -48,7 +48,7 @@ const Styles = `
 
 export default class HUD {
 	private static readonly DriveHint: string =
-		'WASD / arrows drive · hold Space while turning to drift, release to boost · R restart · C free camera · M engine sound';
+		'WASD / arrows drive · hold Space while turning to drift, release to boost · R restart · C free camera · M engine sound · music in Settings';
 	private static readonly FinishHint: string = 'Enter to save · Esc then Space to race again';
 	private readonly root: HTMLDivElement;
 	private readonly starsEl: HTMLDivElement;
