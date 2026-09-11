@@ -1,6 +1,21 @@
 import * as path from 'path';
+import * as dotenv from 'dotenv';
 import {createApp} from './app';
 import {createStoreFromEnv} from './scores/createStore';
+
+// Load the repo-root .env file before anything below reads process.env.
+//
+// We use the `dotenv` package rather than Node's built-in
+// `process.loadEnvFile` (Node 20.12+/21.7+) because the production Docker
+// image is built FROM node:19 (see Dockerfile), which predates that API.
+// `dotenv.config()` behaves the same way we need here: it never overrides
+// variables already present in the real environment (Coolify's runtime env
+// wins over the file), it strips surrounding double quotes from values, and
+// it silently no-ops (does not throw) when the .env file is absent, which is
+// the case in the Docker image. __dirname resolves two levels up to the repo
+// root whether this runs as server/src/index.ts (tsx) or the compiled
+// server/dist/index.js, so this works regardless of the process's cwd.
+dotenv.config({path: path.resolve(__dirname, '../../.env'), quiet: true});
 
 const PORT = Number(process.env.PORT) || 8080;
 
