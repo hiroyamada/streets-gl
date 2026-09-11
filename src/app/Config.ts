@@ -67,6 +67,21 @@ const Config = {
 			statusDefault: 'on',
 			category: 'general'
 		},
+		music: {
+			label: 'Kart music',
+			status: ['off', 'on'],
+			statusLabels: ['Disabled', 'Enabled'],
+			statusDefault: 'on',
+			category: 'sound'
+		},
+		musicVolume: {
+			label: 'Music volume',
+			parent: 'music',
+			parentStatusCondition: ['on'],
+			selectRange: [0, 100, 5],
+			selectRangeDefault: 60,
+			category: 'sound'
+		},
 		/*airTraffic: {
 			label: 'Real-time air traffic',
 			status: ['off', 'on'],

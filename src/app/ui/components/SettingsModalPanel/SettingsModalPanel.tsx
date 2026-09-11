@@ -65,6 +65,13 @@ const SettingsModalPanel: React.FC<{
 						})
 					}
 				</ModalCategory>
+				<ModalCategory label={'Sound'}>
+					{
+						categorizedGroups.sound.map(group => {
+							return <SettingGroup key={group.parent} group={group}/>
+						})
+					}
+				</ModalCategory>
 				<ModalButtonRow
 					labels={['Reset to defaults']}
 					icons={[<AiOutlineUndo size={16} />]}
