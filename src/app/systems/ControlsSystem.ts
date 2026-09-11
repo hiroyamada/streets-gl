@@ -12,6 +12,8 @@ import CursorStyleSystem from "./CursorStyleSystem";
 import PerspectiveCamera from "~/lib/core/PerspectiveCamera";
 import TerrainSystem from "~/app/systems/TerrainSystem";
 import SlippyControlsNavigator from "~/app/controls/SlippyControlsNavigator";
+import KartControlsNavigator from "~/app/kart/KartControlsNavigator";
+import KartController from "~/app/kart/KartController";
 
 const WheelZoomFactor = 6;
 
@@ -26,7 +28,8 @@ export interface ControlsState {
 export enum NavigationMode {
 	Ground,
 	Free,
-	Slippy
+	Slippy,
+	Kart
 }
 
 export default class ControlsSystem extends System {
@@ -43,6 +46,7 @@ export default class ControlsSystem extends System {
 	private groundNavigator: GroundControlsNavigator;
 	private freeNavigator: FreeControlsNavigator;
 	private slippyNavigator: SlippyControlsNavigator;
+	private kartNavigator: KartControlsNavigator;
 	private activeNavigator: ControlsNavigator = null;
 
 	public constructor() {
@@ -75,6 +79,7 @@ export default class ControlsSystem extends System {
 		this.groundNavigator = new GroundControlsNavigator(this.element, this.camera, cursorStyleSystem, terrainHeightProvider);
 		this.freeNavigator = new FreeControlsNavigator(this.element, this.camera, terrainHeightProvider);
 		this.slippyNavigator = new SlippyControlsNavigator(this.element, this.camera, cursorStyleSystem, terrainHeightProvider);
+		this.kartNavigator = new KartControlsNavigator(this.element, this.camera, terrainHeightProvider);
 
 		this.activeNavigator = this.slippyNavigator;
 		this.slippyNavigator.enable();
@@ -82,6 +87,12 @@ export default class ControlsSystem extends System {
 		this.mode = NavigationMode.Slippy;
 
 		this.initStateFromHash();
+
+		this.activeNavigator.disable();
+		this.kartNavigator.enable();
+		this.kartNavigator.syncWithState(this.state);
+		this.activeNavigator = this.kartNavigator;
+		this.mode = NavigationMode.Kart;
 	}
 
 	private initStateFromHash(): void {
@@ -141,6 +152,11 @@ export default class ControlsSystem extends System {
 	}
 
 	private updatePositionFromState(state: ControlsState): void {
+		if (this.kartNavigator && this.kartNavigator.isEnabled) {
+			this.kartNavigator.syncWithState(state);
+			return;
+		}
+
 		if (state.distance < Config.MaxCameraDistance && this.slippyNavigator.isEnabled) {
 			this.slippyNavigator.disable();
 			this.groundNavigator.enable();
@@ -163,6 +179,41 @@ export default class ControlsSystem extends System {
 	}
 
 	private keyDownEvent(e: KeyboardEvent): void {
+		if (e.code === 'KeyC') {
+			e.preventDefault();
+
+			if (this.mode === NavigationMode.Kart) {
+				const kartPosition = this.kartNavigator.controller.position;
+				const kartHeading = this.kartNavigator.controller.heading;
+
+				this.kartNavigator.disable();
+				this.groundNavigator.enable();
+				this.groundNavigator.syncWithState({
+					x: kartPosition.x,
+					z: kartPosition.z,
+					pitch: MathUtils.toRad(45),
+					yaw: kartHeading,
+					distance: 300
+				});
+
+				this.activeNavigator = this.groundNavigator;
+				this.mode = NavigationMode.Ground;
+			} else if (this.mode === NavigationMode.Ground) {
+				this.groundNavigator.disable();
+				this.kartNavigator.enable();
+				this.kartNavigator.syncWithCamera(this.groundNavigator);
+
+				this.activeNavigator = this.kartNavigator;
+				this.mode = NavigationMode.Kart;
+			}
+
+			return;
+		}
+
+		if (this.mode === NavigationMode.Kart) {
+			return;
+		}
+
 		if (e.code === 'Tab') {
 			e.preventDefault();
 
@@ -220,7 +271,8 @@ export default class ControlsSystem extends System {
 	}
 
 	public get isTilesVisible(): boolean {
-		return this.groundNavigator.isEnabled || this.freeNavigator.isEnabled;
+		return this.groundNavigator.isEnabled || this.freeNavigator.isEnabled ||
+			(this.kartNavigator != null && this.kartNavigator.isEnabled);
 	}
 
 	public get slippyMapAndTilesFactor(): number {
@@ -232,6 +284,10 @@ export default class ControlsSystem extends System {
 	}
 
 	public get northDirection(): number {
+		if (this.kartNavigator && this.kartNavigator.isEnabled) {
+			return this.kartNavigator.controller.heading;
+		}
+
 		if (this.groundNavigator && this.groundNavigator.isEnabled) {
 			return this.groundNavigator.yaw;
 		}
@@ -240,7 +296,15 @@ export default class ControlsSystem extends System {
 	}
 
 	public getGroundControlsTarget(): Vec3 {
+		if (this.kartNavigator && this.kartNavigator.isEnabled) {
+			return this.kartNavigator.controller.position;
+		}
+
 		return this.groundNavigator.target;
+	}
+
+	public get kartController(): KartController {
+		return this.kartNavigator ? this.kartNavigator.controller : null;
 	}
 
 	public update(deltaTime: number): void {

@@ -39,6 +39,8 @@ import {InstanceTextureIdList} from "~/app/render/textures/createInstanceTexture
 import MapTimeSystem from "~/app/systems/MapTimeSystem";
 import {AircraftPartTextures} from "~/app/render/textures/createAircraftTexture";
 import PerspectiveCamera from "~/lib/core/PerspectiveCamera";
+import KartMaterialContainer from "../materials/KartMaterialContainer";
+import KartSystem from "~/app/kart/KartSystem";
 
 export default class GBufferPass extends Pass<{
 	GBufferRenderPass: {
@@ -79,6 +81,7 @@ export default class GBufferPass extends Pass<{
 	private genericInstanceMaterial: AbstractMaterial;
 	private advancedInstanceMaterial: AbstractMaterial;
 	private aircraftMaterial: AbstractMaterial;
+	private kartMaterial: AbstractMaterial;
 	private cameraMatrixWorldInversePrev: Mat4 = null;
 	public objectIdBuffer: Uint32Array = new Uint32Array(1);
 	public objectIdX = 0;
@@ -153,6 +156,8 @@ export default class GBufferPass extends Pass<{
 		this.aircraftMaterial = new AircraftMaterialContainer(this.renderer).material;
 		this.aircraftMaterial.getUniform<UniformTexture2DArray>('tMap').value =
 			<AbstractTexture2DArray>this.manager.texturePool.get('aircraft');
+
+		this.kartMaterial = new KartMaterialContainer(this.renderer).material;
 	}
 
 	private updateMaterialsDefines(): void {
@@ -503,6 +508,33 @@ export default class GBufferPass extends Pass<{
 		}
 	}
 
+	private renderKart(): void {
+		const camera = this.manager.sceneSystem.objects.camera;
+		const kartObjects = this.manager.systemManager.getSystem(KartSystem).objects;
+
+		for (const object of kartObjects) {
+			if (!object.visible || !object.isMeshReady()) {
+				continue;
+			}
+
+			const mvMatrixPrev = Mat4.multiply(this.cameraMatrixWorldInversePrev, object.matrixWorld);
+
+			this.renderer.useMaterial(this.kartMaterial);
+
+			this.kartMaterial.getUniform('projectionMatrix', 'MainBlock').value = new Float32Array(camera.jitteredProjectionMatrix.values);
+			this.kartMaterial.getUniform('modelMatrix', 'MainBlock').value = new Float32Array(object.matrixWorld.values);
+			this.kartMaterial.getUniform('viewMatrix', 'MainBlock').value = new Float32Array(camera.matrixWorldInverse.values);
+			this.kartMaterial.getUniform('modelViewMatrixPrev', 'MainBlock').value = new Float32Array(mvMatrixPrev.values);
+			this.kartMaterial.getUniform<UniformFloat3>('color', 'MainBlock').value =
+				new Float32Array([object.color.x, object.color.y, object.color.z]);
+			this.kartMaterial.getUniform<UniformFloat3>('glow', 'MainBlock').value =
+				new Float32Array([object.glow.x, object.glow.y, object.glow.z]);
+			this.kartMaterial.updateUniformBlock('MainBlock');
+
+			object.draw();
+		}
+	}
+
 	private writeToObjectIdBuffer(): void {
 		const mainRenderPass = this.getPhysicalResource('GBufferRenderPass');
 		mainRenderPass.readColorAttachmentPixel(4, this.objectIdBuffer, this.objectIdX, this.objectIdY);
@@ -541,6 +573,7 @@ export default class GBufferPass extends Pass<{
 		this.renderSkybox();
 		this.renderExtrudedMeshes();
 		this.renderAircraft(instancesOrigin);
+		this.renderKart();
 		this.renderTerrain();
 		this.renderProjectedMeshes();
 		this.renderHuggingMeshes();

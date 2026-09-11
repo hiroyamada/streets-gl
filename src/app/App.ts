@@ -16,6 +16,7 @@ import VehicleSystem from "./systems/VehicleSystem";
 import TerrainSystem from "./systems/TerrainSystem";
 import SettingsSystem from "~/app/systems/SettingsSystem";
 import SlippyMapSystem from "~/app/systems/SlippyMapSystem";
+import KartSystem from "~/app/kart/KartSystem";
 
 class App {
 	private loop = (deltaTime: number): void => this.update(deltaTime);
@@ -47,6 +48,7 @@ class App {
 				TerrainSystem,
 				TileSystem,
 				SceneSystem,
+				KartSystem,
 				CursorStyleSystem,
 				PickingSystem,
 				TileObjectsSystem,
