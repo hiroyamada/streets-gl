@@ -25,7 +25,6 @@ const Styles = `
 #hud .hud-finish.show { display: flex; }
 #hud .hud-finish .title { font-size: 96px; color: #ffd83d; animation: hudPop .9s ease-out; }
 #hud .hud-finish .total { font-size: 48px; }
-#hud .hud-finish .best { font-size: 22px; color: #7dff9a; }
 #hud .hud-finish table { font-size: 18px; border-collapse: collapse; margin-top: 6px; }
 #hud .hud-finish td { padding: 2px 14px; text-align: left; }
 #hud .hud-finish td:last-child { text-align: right; }
@@ -45,16 +44,28 @@ const Styles = `
 #hud .hud-leaderboard tr.own { color: #ffd83d; }
 #hud .hud-title { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; }
 #hud .hud-title.show { display: flex; }
-#hud .hud-title .panel { background: rgba(10,10,30,.55); border-radius: 14px; padding: 30px 46px;
-	display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 88vw; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
-#hud .hud-title .game-title { font-size: 62px; color: #ffd83d; text-align: center; margin-bottom: 2px; }
-#hud .hud-title .course { font-size: 20px; }
-#hud .hud-title .kart-line { font-size: 18px; margin-top: 4px; }
-#hud .hud-title .best { font-size: 18px; color: #7dff9a; margin-top: 4px; }
-#hud .hud-title ol { font-size: 17px; font-style: normal; text-align: left; margin: 8px 0 0; padding-left: 22px; }
-#hud .hud-title .prompt { font-size: 26px; color: #ffd83d; margin-top: 14px; animation: hudPulse 1.4s ease-in-out infinite; }
-#hud .hud-title .hint2 { font-size: 13px; font-style: normal; opacity: .85; margin-top: 4px; }
+#hud .hud-title .panel { background: rgba(8,8,24,.82); border: 1px solid rgba(255,255,255,.14); border-radius: 14px;
+	padding: 32px 48px; display: flex; flex-direction: column; align-items: center; max-width: 88vw;
+	box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+	#hud .hud-title .panel { background: rgba(8,8,24,.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+}
+#hud .hud-title .group { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#hud .hud-title .group + .group { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.14); width: 100%; }
+#hud .hud-title .game-title { font-size: clamp(36px, 8vw, 62px); color: #ffd83d; text-align: center; }
+#hud .hud-title .tagline { font-size: clamp(12px, 2.4vw, 16px); font-style: normal; opacity: .75; text-align: center; }
+#hud .hud-title .course { font-size: clamp(15px, 3vw, 20px); text-align: center; }
+#hud .hud-title .kart-line { font-size: 18px; text-align: center; }
+#hud .hud-title ol { counter-reset: star-count; list-style: none; font-size: 17px; font-style: normal;
+	text-align: left; margin: 0; padding: 0; display: inline-flex; flex-direction: column; gap: 4px; }
+#hud .hud-title ol li { counter-increment: star-count; }
+#hud .hud-title ol li::before { content: counter(star-count) "."; display: inline-block; min-width: 1.3em; color: #ffd83d; margin-right: 6px; }
+#hud .hud-title .prompt { font-size: clamp(19px, 4vw, 26px); color: #ffd83d; animation: hudPulse 1.4s ease-in-out infinite; }
+#hud .hud-title .hint2 { font-size: 13px; font-style: normal; opacity: .85; }
 @keyframes hudPulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+	#hud .hud-title .prompt { animation: none; opacity: .9; }
+}
 @keyframes hudPop { 0% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(.9); opacity: 0; } }
 @keyframes hudBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes hudSplit { 0% { opacity: 0; transform: translateY(-6px); } 15% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; } }
@@ -65,7 +76,6 @@ export interface TitleScreenOptions {
 	courseName: string;
 	starNames: string[];
 	kartName: string;
-	bestTimeText: string | null;
 }
 
 export default class HUD {
@@ -84,7 +94,6 @@ export default class HUD {
 	private readonly soundEl: HTMLDivElement;
 	private readonly finishEl: HTMLDivElement;
 	private readonly finishTotalEl: HTMLDivElement;
-	private readonly finishBestEl: HTMLDivElement;
 	private readonly finishTableEl: HTMLTableElement;
 	private readonly hintEl: HTMLDivElement;
 	private readonly scoreEl: HTMLDivElement;
@@ -95,7 +104,6 @@ export default class HUD {
 	private readonly scoreResultEl: HTMLDivElement;
 	private readonly leaderboardEl: HTMLTableElement;
 	private readonly titleEl: HTMLDivElement;
-	private readonly titleBestEl: HTMLDivElement;
 	private readonly titleStarsEl: HTMLOListElement;
 	private lastStarsText: string = '';
 	private lastTimerText: string = '';
@@ -134,7 +142,6 @@ export default class HUD {
 		const title = HUD.element('div', 'title');
 		title.textContent = 'FINISH!';
 		this.finishTotalEl = HUD.element('div', 'total');
-		this.finishBestEl = HUD.element('div', 'best');
 		this.finishTableEl = document.createElement('table');
 
 		this.scoreEl = HUD.element('div', 'hud-score');
@@ -154,10 +161,9 @@ export default class HUD {
 
 		this.restrictKeysToInput(this.scoreInputEl);
 
-		this.finishEl.append(title, this.finishTotalEl, this.finishBestEl, this.finishTableEl, this.scoreEl);
+		this.finishEl.append(title, this.finishTotalEl, this.finishTableEl, this.scoreEl);
 
 		this.titleEl = HUD.element('div', 'hud-title');
-		this.titleBestEl = HUD.element('div', 'best');
 		this.titleStarsEl = document.createElement('ol');
 
 		this.root.append(
@@ -309,9 +315,8 @@ export default class HUD {
 		el.addEventListener('animationend', () => el.remove());
 	}
 
-	public showFinish(totalText: string, splits: {name: string; text: string}[], bestText: string, isNewBest: boolean): void {
+	public showFinish(totalText: string, splits: {name: string; text: string}[]): void {
 		this.finishTotalEl.textContent = `TIME ${totalText}`;
-		this.finishBestEl.textContent = isNewBest ? 'NEW BEST TIME!' : `Best ${bestText}`;
 		this.finishTableEl.textContent = '';
 
 		for (let i = 0; i < splits.length; i++) {
@@ -407,7 +412,13 @@ export default class HUD {
 		const panel = HUD.element('div', 'panel');
 
 		const gameTitle = HUD.element('div', 'game-title');
-		gameTitle.textContent = 'SHIBUYA KART';
+		gameTitle.textContent = 'OPEN KART';
+
+		const tagline = HUD.element('div', 'tagline');
+		tagline.textContent = 'Collect three stars as quickly as possible!';
+
+		const titleGroup = HUD.element('div', 'group');
+		titleGroup.append(gameTitle, tagline);
 
 		const course = HUD.element('div', 'course');
 		course.textContent = `COURSE — ${options.courseName.toUpperCase()}`;
@@ -422,12 +433,8 @@ export default class HUD {
 		const kartLine = HUD.element('div', 'kart-line');
 		kartLine.textContent = `KART — ${options.kartName.toUpperCase()}`;
 
-		panel.append(gameTitle, course, this.titleStarsEl, kartLine);
-
-		if (options.bestTimeText !== null) {
-			this.titleBestEl.textContent = `BEST TIME ${options.bestTimeText}`;
-			panel.append(this.titleBestEl);
-		}
+		const courseGroup = HUD.element('div', 'group');
+		courseGroup.append(course, this.titleStarsEl, kartLine);
 
 		const prompt = HUD.element('div', 'prompt');
 		prompt.textContent = 'PRESS SPACE TO START';
@@ -435,7 +442,10 @@ export default class HUD {
 		const hint2 = HUD.element('div', 'hint2');
 		hint2.textContent = 'R restarts · WASD / arrows drive · hold Space while turning to drift';
 
-		panel.append(prompt, hint2);
+		const promptGroup = HUD.element('div', 'group');
+		promptGroup.append(prompt, hint2);
+
+		panel.append(titleGroup, courseGroup, promptGroup);
 		this.titleEl.appendChild(panel);
 		this.titleEl.classList.add('show');
 	}

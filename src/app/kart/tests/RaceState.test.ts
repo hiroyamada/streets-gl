@@ -75,21 +75,9 @@ describe('RaceState', () => {
 		race.recordSplit(3000);
 		race.recordSplit(4000);
 		expect(race.isComplete).toBe(true);
-		expect(race.finish(4000)).toBe(true);
+		race.finish(4000);
 		expect(race.phase).toBe(RacePhase.Finished);
 		expect(race.getElapsed(9999)).toBe(3000);
-		expect(race.bestTime).toBe(3000);
-
-		// A slower second run is not a new best; a faster one is.
-		race.reset(10000);
-		race.beginCountdown(10000);
-		race.start(10000);
-		expect(race.finish(14000)).toBe(false);
-		race.reset(20000);
-		race.beginCountdown(20000);
-		race.start(20000);
-		expect(race.finish(22000)).toBe(true);
-		expect(race.bestTime).toBe(2000);
 	});
 });
 

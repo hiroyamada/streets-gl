@@ -8,10 +8,8 @@ export enum RacePhase {
 export const CountdownDuration = 3000;
 export const GoDisplayDuration = 900;
 export const CourseName = 'Shibuya Circuit';
-const BestTimeStorageKey = 'shibuyaKart.bestTime';
 
-// Race bookkeeping: title screen, countdown, timer, split times, best time. Times are in
-// milliseconds.
+// Race bookkeeping: title screen, countdown, timer, split times. Times are in milliseconds.
 export default class RaceState {
 	public phase: RacePhase = RacePhase.Title;
 	public titleStart: number = 0;
@@ -21,30 +19,10 @@ export default class RaceState {
 	public splits: number[] = [];
 	public nextStarIndex: number = 0;
 	public falseStart: boolean = false;
-	public bestTime: number = null;
 	public readonly totalStars: number;
 
 	public constructor(totalStars: number) {
 		this.totalStars = totalStars;
-		this.bestTime = RaceState.loadBestTime();
-	}
-
-	private static loadBestTime(): number {
-		try {
-			const value = parseFloat(localStorage.getItem(BestTimeStorageKey));
-
-			return isNaN(value) ? null : value;
-		} catch (e) {
-			return null;
-		}
-	}
-
-	private static saveBestTime(time: number): void {
-		try {
-			localStorage.setItem(BestTimeStorageKey, time.toString());
-		} catch (e) {
-			// Storage unavailable (private mode etc.) - ignore.
-		}
 	}
 
 	public reset(now: number): void {
@@ -112,21 +90,9 @@ export default class RaceState {
 		return this.nextStarIndex >= this.totalStars;
 	}
 
-	// Returns true when this run is a new best time.
-	public finish(now: number): boolean {
+	public finish(now: number): void {
 		this.phase = RacePhase.Finished;
 		this.finishTime = now;
-
-		const total = this.getElapsed(now);
-
-		if (this.bestTime === null || total < this.bestTime) {
-			this.bestTime = total;
-			RaceState.saveBestTime(total);
-
-			return true;
-		}
-
-		return false;
 	}
 
 	// Mario Kart style: 1'02"34
