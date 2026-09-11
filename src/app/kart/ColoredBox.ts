@@ -3,6 +3,7 @@ import AbstractMesh from "~/lib/renderer/abstract-renderer/AbstractMesh";
 import AbstractRenderer from "~/lib/renderer/abstract-renderer/AbstractRenderer";
 import {RendererTypes} from "~/lib/renderer/RendererTypes";
 import Vec3 from "~/lib/math/Vec3";
+import Mat4 from "~/lib/math/Mat4";
 
 interface BoxFace {
 	corners: [number, number, number][];
@@ -50,6 +51,7 @@ function buildBoxAttributes(sizeX: number, sizeY: number, sizeZ: number): {posit
 export default class ColoredBox extends RenderableObject3D {
 	public mesh: AbstractMesh = null;
 	public visible: boolean = true;
+	public matrixWorldPrev: Mat4 = null;
 	public readonly color: Vec3;
 	public readonly glow: Vec3;
 	private readonly sizeX: number;

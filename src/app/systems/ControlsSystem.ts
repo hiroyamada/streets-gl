@@ -14,6 +14,8 @@ import TerrainSystem from "~/app/systems/TerrainSystem";
 import SlippyControlsNavigator from "~/app/controls/SlippyControlsNavigator";
 import KartControlsNavigator from "~/app/kart/KartControlsNavigator";
 import KartController from "~/app/kart/KartController";
+import BuildingCollider from "~/app/kart/BuildingCollider";
+import TileSystem from "~/app/systems/TileSystem";
 
 const WheelZoomFactor = 6;
 
@@ -79,7 +81,9 @@ export default class ControlsSystem extends System {
 		this.groundNavigator = new GroundControlsNavigator(this.element, this.camera, cursorStyleSystem, terrainHeightProvider);
 		this.freeNavigator = new FreeControlsNavigator(this.element, this.camera, terrainHeightProvider);
 		this.slippyNavigator = new SlippyControlsNavigator(this.element, this.camera, cursorStyleSystem, terrainHeightProvider);
-		this.kartNavigator = new KartControlsNavigator(this.element, this.camera, terrainHeightProvider);
+		const buildingCollider = new BuildingCollider(this.systemManager.getSystem(TileSystem));
+
+		this.kartNavigator = new KartControlsNavigator(this.element, this.camera, terrainHeightProvider, buildingCollider);
 
 		this.activeNavigator = this.slippyNavigator;
 		this.slippyNavigator.enable();

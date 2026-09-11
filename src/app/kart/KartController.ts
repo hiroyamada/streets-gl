@@ -1,6 +1,7 @@
 import Vec3 from "~/lib/math/Vec3";
 import MathUtils from "~/lib/math/MathUtils";
 import Config from "~/app/Config";
+import BuildingCollider from "~/app/kart/BuildingCollider";
 
 const MaxSpeed = 18;
 const Acceleration = 12;
@@ -15,6 +16,9 @@ const DriftSlideRate = 3;
 const GripRate = 12;
 const BoostSpeed = 8;
 const BoostDuration = 1;
+const CollisionProbeDistance = 1.2;
+const WallSlideFriction = 0.9;
+const WallBounce = 0.25;
 
 export default class KartController {
 	public position: Vec3 = new Vec3();
@@ -75,7 +79,50 @@ export default class KartController {
 		return this.isDrifting ? DriftSteerMultiplier : 1;
 	}
 
-	public update(deltaTime: number, groundHeight: number | null): void {
+	private canMoveTo(x: number, z: number, dirX: number, dirZ: number, collider: BuildingCollider): boolean {
+		const probe = CollisionProbeDistance * this.worldScale;
+
+		return !collider.isBlocked(x, z) && !collider.isBlocked(x + dirX * probe, z + dirZ * probe);
+	}
+
+	private moveWithCollision(dx: number, dz: number, collider: BuildingCollider): void {
+		const length = Math.hypot(dx, dz);
+
+		if (!collider || length === 0 || collider.isBlocked(this.position.x, this.position.z)) {
+			// No collider, no movement, or already inside a building (let it drive out).
+			this.position.x += dx;
+			this.position.z += dz;
+			return;
+		}
+
+		const dirX = dx / length;
+		const dirZ = dz / length;
+
+		if (this.canMoveTo(this.position.x + dx, this.position.z + dz, dirX, dirZ, collider)) {
+			this.position.x += dx;
+			this.position.z += dz;
+			return;
+		}
+
+		// Blocked: try sliding along one axis so the kart hugs the wall instead of stopping dead.
+		if (dx !== 0 && this.canMoveTo(this.position.x + dx, this.position.z, Math.sign(dx), 0, collider)) {
+			this.position.x += dx;
+			this.speed *= WallSlideFriction;
+			return;
+		}
+
+		if (dz !== 0 && this.canMoveTo(this.position.x, this.position.z + dz, 0, Math.sign(dz), collider)) {
+			this.position.z += dz;
+			this.speed *= WallSlideFriction;
+			return;
+		}
+
+		this.speed = -this.speed * WallBounce;
+		this.isDrifting = false;
+		this.driftTime = 0;
+	}
+
+	public update(deltaTime: number, groundHeight: number | null, collider: BuildingCollider = null): void {
 		const dt = Math.min(deltaTime, MaxDeltaTime);
 		const maxSpeed = MaxSpeed * this.worldScale;
 		const reverseMaxSpeed = ReverseMaxSpeed * this.worldScale;
@@ -122,8 +169,7 @@ export default class KartController {
 
 		const forward = KartController.getForwardVector(this.moveHeading);
 
-		this.position.x += forward.x * this.speed * dt;
-		this.position.z += forward.z * this.speed * dt;
+		this.moveWithCollision(forward.x * this.speed * dt, forward.z * this.speed * dt, collider);
 		this.position.y = groundHeight ?? this.position.y;
 	}
 }

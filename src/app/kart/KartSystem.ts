@@ -110,6 +110,7 @@ export default class KartSystem extends System {
 			star.box.position.y = star.baseHeight + StarHoverHeight * worldScale + bob;
 			star.box.rotation.y += StarSpinSpeed * deltaTime;
 			star.box.updateMatrix();
+			star.box.updateMatrixWorld();
 
 			const distance = Math.hypot(controller.position.x - star.x, controller.position.z - star.z);
 
@@ -179,7 +180,10 @@ export default class KartSystem extends System {
 		box.position.y = controller.position.y;
 		box.position.z = controller.position.z;
 		box.rotation.y = controller.heading;
+		// SceneSystem has already refreshed world matrices this frame, so refresh this one
+		// explicitly; otherwise the kart renders one frame behind the camera and stutters.
 		box.updateMatrix();
+		box.updateMatrixWorld();
 
 		if (this.startTime === null && controller.throttle !== 0) {
 			this.startTime = performance.now();

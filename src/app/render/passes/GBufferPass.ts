@@ -82,6 +82,7 @@ export default class GBufferPass extends Pass<{
 	private advancedInstanceMaterial: AbstractMaterial;
 	private aircraftMaterial: AbstractMaterial;
 	private kartMaterial: AbstractMaterial;
+	private kartViewMatrixPrev: Mat4 = null;
 	private cameraMatrixWorldInversePrev: Mat4 = null;
 	public objectIdBuffer: Uint32Array = new Uint32Array(1);
 	public objectIdX = 0;
@@ -517,7 +518,14 @@ export default class GBufferPass extends Pass<{
 				continue;
 			}
 
-			const mvMatrixPrev = Mat4.multiply(this.cameraMatrixWorldInversePrev, object.matrixWorld);
+			// Kart objects move relative to the world, so use their real previous-frame
+			// matrix (in the previous wrapper space, paired with the raw previous view matrix)
+			// for correct motion vectors instead of treating them as static.
+			const matrixWorldPrev = object.matrixWorldPrev ?? object.matrixWorld;
+			const viewMatrixPrev = this.kartViewMatrixPrev ?? camera.matrixWorldInverse;
+			const mvMatrixPrev = Mat4.multiply(viewMatrixPrev, matrixWorldPrev);
+
+			object.matrixWorldPrev = Mat4.copy(object.matrixWorld);
 
 			this.renderer.useMaterial(this.kartMaterial);
 
@@ -533,6 +541,8 @@ export default class GBufferPass extends Pass<{
 
 			object.draw();
 		}
+
+		this.kartViewMatrixPrev = Mat4.copy(camera.matrixWorldInverse);
 	}
 
 	private writeToObjectIdBuffer(): void {

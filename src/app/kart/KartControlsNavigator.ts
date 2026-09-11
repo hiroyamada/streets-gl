@@ -6,10 +6,12 @@ import {ControlsState} from "~/app/systems/ControlsSystem";
 import PerspectiveCamera from "~/lib/core/PerspectiveCamera";
 import TerrainHeightProvider from "~/app/terrain/TerrainHeightProvider";
 import KartController from "~/app/kart/KartController";
+import BuildingCollider from "~/app/kart/BuildingCollider";
 
 export default class KartControlsNavigator extends ControlsNavigator {
 	private readonly camera: PerspectiveCamera;
 	private readonly terrainHeightProvider: TerrainHeightProvider;
+	private readonly collider: BuildingCollider;
 	public readonly controller: KartController = new KartController();
 	private throttleForwardKeyPressed: boolean = false;
 	private throttleBackwardKeyPressed: boolean = false;
@@ -20,12 +22,14 @@ export default class KartControlsNavigator extends ControlsNavigator {
 	public constructor(
 		element: HTMLElement,
 		camera: PerspectiveCamera,
-		terrainHeightProvider: TerrainHeightProvider
+		terrainHeightProvider: TerrainHeightProvider,
+		collider: BuildingCollider
 	) {
 		super(element);
 
 		this.camera = camera;
 		this.terrainHeightProvider = terrainHeightProvider;
+		this.collider = collider;
 
 		this.addEventListeners();
 	}
@@ -162,7 +166,7 @@ export default class KartControlsNavigator extends ControlsNavigator {
 			true
 		);
 
-		this.controller.update(deltaTime, groundHeight);
+		this.controller.update(deltaTime, groundHeight, this.collider);
 
 		const ws = this.controller.worldScale;
 		const forward = KartController.getForwardVector(this.controller.heading);
