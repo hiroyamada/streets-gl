@@ -38,6 +38,8 @@ describe('POST /api/scores', () => {
 		expect(typeof res.body.id).toBe('number');
 		expect(typeof res.body.createdAt).toBe('string');
 		expect(res.body.rank).toBe(1);
+		expect(typeof res.body.editToken).toBe('string');
+		expect(res.body.editToken.length).toBeGreaterThan(0);
 	});
 
 	it('includes the submitted score\'s rank, ties sharing a rank', async () => {
@@ -177,6 +179,132 @@ describe('POST /api/scores', () => {
 	});
 });
 
+describe('PATCH /api/scores/:id', () => {
+	it('renames a score with the correct edit token', async () => {
+		const store = new MemoryScoreStore();
+		const app = createApp(store, {rateLimit: false});
+
+		const created = await request(app).post('/api/scores').send({name: 'Alice', timeMs: 5000});
+
+		const res = await request(app)
+			.patch(`/api/scores/${created.body.id}`)
+			.send({name: 'Alicia', editToken: created.body.editToken});
+
+		expect(res.status).toBe(200);
+		expect(res.body).toMatchObject({id: created.body.id, name: 'Alicia', timeMs: 5000, rank: 1});
+		expect(res.body).not.toHaveProperty('editToken');
+
+		const list = await request(app).get('/api/scores');
+
+		expect(list.body.map((s: {name: string}) => s.name)).toEqual(['Alicia']);
+	});
+
+	it('returns the current rank after renaming', async () => {
+		const store = new MemoryScoreStore();
+		const app = createApp(store, {rateLimit: false});
+
+		const first = await request(app).post('/api/scores').send({name: 'Alice', timeMs: 5000});
+
+		await request(app).post('/api/scores').send({name: 'Bob', timeMs: 1000});
+
+		const res = await request(app)
+			.patch(`/api/scores/${first.body.id}`)
+			.send({name: 'Alicia', editToken: first.body.editToken});
+
+		expect(res.status).toBe(200);
+		expect(res.body.rank).toBe(2);
+	});
+
+	it('rejects a wrong edit token with 403', async () => {
+		const store = new MemoryScoreStore();
+		const app = createApp(store, {rateLimit: false});
+
+		const created = await request(app).post('/api/scores').send({name: 'Alice', timeMs: 5000});
+
+		const res = await request(app)
+			.patch(`/api/scores/${created.body.id}`)
+			.send({name: 'Eve', editToken: 'not-the-real-token'});
+
+		expect(res.status).toBe(403);
+		expect(res.body).toHaveProperty('error');
+
+		const list = await request(app).get('/api/scores');
+
+		expect(list.body[0].name).toBe('Alice');
+	});
+
+	it('returns 404 for an unknown id', async () => {
+		const app = makeApp();
+
+		const res = await request(app)
+			.patch('/api/scores/999')
+			.send({name: 'Eve', editToken: 'whatever'});
+
+		expect(res.status).toBe(404);
+		expect(res.body).toHaveProperty('error');
+	});
+
+	it('returns 400 for a non-numeric id', async () => {
+		const app = makeApp();
+
+		const res = await request(app)
+			.patch('/api/scores/not-a-number')
+			.send({name: 'Eve', editToken: 'whatever'});
+
+		expect(res.status).toBe(400);
+		expect(res.body).toHaveProperty('error');
+	});
+
+	it('rejects an invalid name with 400', async () => {
+		const store = new MemoryScoreStore();
+		const app = createApp(store, {rateLimit: false});
+
+		const created = await request(app).post('/api/scores').send({name: 'Alice', timeMs: 5000});
+
+		const res = await request(app)
+			.patch(`/api/scores/${created.body.id}`)
+			.send({name: '', editToken: created.body.editToken});
+
+		expect(res.status).toBe(400);
+		expect(res.body).toHaveProperty('error');
+	});
+
+	it('rejects a missing editToken with 400', async () => {
+		const store = new MemoryScoreStore();
+		const app = createApp(store, {rateLimit: false});
+
+		const created = await request(app).post('/api/scores').send({name: 'Alice', timeMs: 5000});
+
+		const res = await request(app)
+			.patch(`/api/scores/${created.body.id}`)
+			.send({name: 'Alicia'});
+
+		expect(res.status).toBe(400);
+		expect(res.body).toHaveProperty('error');
+	});
+
+	it('applies the same rate limiter as POST', async () => {
+		const store = new MemoryScoreStore();
+		const app = createApp(store, {rateLimit: true});
+
+		const created = await request(app).post('/api/scores').send({name: 'Alice', timeMs: 1000});
+
+		for (let i = 1; i < 10; i++) {
+			const res = await request(app)
+				.patch(`/api/scores/${created.body.id}`)
+				.send({name: 'Alicia', editToken: created.body.editToken});
+
+			expect(res.status).toBe(200);
+		}
+
+		const res = await request(app)
+			.patch(`/api/scores/${created.body.id}`)
+			.send({name: 'Alicia', editToken: created.body.editToken});
+
+		expect(res.status).toBe(429);
+	});
+});
+
 describe('GET /api/scores', () => {
 	it('returns scores sorted fastest first', async () => {
 		const store = new MemoryScoreStore();
@@ -190,6 +318,19 @@ describe('GET /api/scores', () => {
 
 		expect(res.status).toBe(200);
 		expect(res.body.map((s: {name: string}) => s.name)).toEqual(['Fast', 'Medium', 'Slow']);
+	});
+
+	it('never includes editToken', async () => {
+		const store = new MemoryScoreStore();
+		const app = createApp(store, {rateLimit: false});
+
+		await request(app).post('/api/scores').send({name: 'Alice', timeMs: 1000});
+
+		const res = await request(app).get('/api/scores');
+
+		expect(res.status).toBe(200);
+		expect(res.body).toHaveLength(1);
+		expect(res.body[0]).not.toHaveProperty('editToken');
 	});
 
 	it('respects limit', async () => {

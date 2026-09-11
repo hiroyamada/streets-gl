@@ -15,7 +15,7 @@ export interface StarDefinition {
 export const StarDefinitions: StarDefinition[] = [
 	{name: 'Dogenzaka', lat: 35.65949, lon: 139.69948},
 	{name: 'Don Quijote', lat: 35.66049, lon: 139.69693},
-	{name: 'PARCO', lat: 35.66222, lon: 139.69733}
+	{name: 'Bunkamura', lat: 35.661659, lon: 139.695849}
 ];
 
 const ActiveColor = new Vec3(1.0, 0.85, 0.2);

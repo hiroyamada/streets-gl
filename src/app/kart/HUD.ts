@@ -34,15 +34,31 @@ const Styles = `
 #hud .hud-float { position: absolute; top: 92px; left: 34px; font-size: 44px; color: #ffd83d; animation: hudFloat 1s ease-out forwards; }
 #hud .hud-hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 18px; font-style: normal; opacity: .85; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
 #hud .hud-sound { position: absolute; bottom: 14px; right: 22px; font-size: 18px; font-style: normal; opacity: .8; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
-#hud .hud-finish { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; background: rgba(10,10,30,.55); }
+#hud .hud-finish { position: absolute; inset: 0; display: none; align-items: flex-start; justify-content: center; background: rgba(10,10,30,.55); overflow-y: auto; padding: 40px 24px; box-sizing: border-box; }
 #hud .hud-finish.show { display: flex; }
-#hud .hud-finish .title { font-size: 96px; color: #ffd83d; animation: hudPop .9s ease-out; }
-#hud .hud-finish .total { font-size: 48px; }
-#hud .hud-finish table { font-size: 18px; border-collapse: collapse; margin-top: 6px; }
-#hud .hud-finish td { padding: 2px 14px; text-align: left; }
-#hud .hud-finish td:last-child { text-align: right; }
+#hud .hud-finish .finish-layout { pointer-events: auto; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; justify-content: center; max-width: 1040px; width: 100%; margin: auto; }
+#hud .hud-finish .finish-left { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 260px; }
+#hud .hud-finish .title { font-size: 72px; color: #ffd83d; animation: hudPopIn .9s ease-out; }
+#hud .hud-finish .total { font-size: 38px; }
+#hud .hud-finish table { font-size: 17px; border-collapse: collapse; margin-top: 4px; }
+#hud .hud-finish td { padding: 2px 14px 2px 0; text-align: left; }
+#hud .hud-finish td:last-child { text-align: right; padding-right: 0; }
 #hud .hud-finish .restart { font-size: 18px; margin-top: 12px; opacity: .9; }
-#hud .hud-score { pointer-events: auto; font-style: normal; display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
+#hud .hud-board { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 520px; }
+#hud .hud-board-title { font-size: 24px; color: #ffd83d; }
+#hud .hud-leaderboard { display: flex; flex-direction: column; gap: 6px; font-style: normal; }
+#hud .hud-leaderboard-row { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 14px; border-radius: 10px;
+	background: rgba(20,20,40,.55); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 2px 6px rgba(0,0,0,.35);
+	opacity: 0; transform: translateX(40px); animation: hudRowIn .35s ease-out forwards; }
+#hud .hud-leaderboard-row.own { background: #ffd83d; border-color: #ffd83d; color: #1a1a2e; text-shadow: none; }
+#hud .hud-leaderboard-row .rank { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center;
+	justify-content: center; font-size: 16px; font-weight: bold; background: rgba(255,255,255,.14); }
+#hud .hud-leaderboard-row.own .rank { background: rgba(26,26,46,.16); }
+#hud .hud-leaderboard-row .name { flex: 1 1 auto; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#hud .hud-leaderboard-row .time { flex: 0 0 auto; font-size: 18px; letter-spacing: .5px; }
+#hud .hud-leaderboard-divider { font-size: 18px; text-align: center; opacity: .7; padding: 2px 0; }
+@keyframes hudRowIn { 0% { opacity: 0; transform: translateX(40px); } 100% { opacity: 1; transform: translateX(0); } }
+#hud .hud-score { pointer-events: auto; font-style: normal; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 #hud .hud-score-form { display: flex; gap: 8px; align-items: center; }
 #hud .hud-score input { font: inherit; font-style: normal; font-size: 16px; padding: 4px 8px; border-radius: 4px; border: 1px solid #555; background: #1a1a2e; color: #fff; width: 200px; text-shadow: none; }
 #hud .hud-score input:disabled { opacity: .6; }
@@ -50,11 +66,9 @@ const Styles = `
 #hud .hud-score button:disabled { opacity: .6; cursor: default; }
 #hud .hud-score-status { font-size: 15px; opacity: .9; }
 #hud .hud-score-status.error { color: #ff7d7d; }
-#hud .hud-score-result { font-size: 18px; color: #7dff9a; }
-#hud .hud-leaderboard { font-size: 15px; border-collapse: collapse; margin-top: 4px; }
-#hud .hud-leaderboard td { padding: 1px 10px; text-align: left; }
-#hud .hud-leaderboard td:last-child { text-align: right; }
-#hud .hud-leaderboard tr.own { color: #ffd83d; }
+@media (min-width: 901px) {
+	#hud .hud-finish .finish-layout { flex-wrap: nowrap; justify-content: flex-start; }
+}
 #hud .hud-title { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; }
 #hud .hud-title.show { display: flex; }
 #hud .hud-title .panel { background: rgba(8,8,24,.82); border: 1px solid rgba(255,255,255,.14); border-radius: 14px;
@@ -80,6 +94,7 @@ const Styles = `
 	#hud .hud-title .prompt { animation: none; opacity: .9; }
 }
 @keyframes hudPop { 0% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(.9); opacity: 0; } }
+@keyframes hudPopIn { 0% { transform: scale(2.2); opacity: 0; } 18% { transform: scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: scale(.9); opacity: 0; } }
 @keyframes hudBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes hudSplit { 0% { opacity: 0; transform: translateY(-6px); } 15% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes hudFloat { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-73px); } }
@@ -94,7 +109,7 @@ export interface TitleScreenOptions {
 export default class HUD {
 	private static readonly DriveHint: string =
 		'WASD / arrows drive · hold Space while turning to drift, release to boost · Q mushroom · R restart · C free camera · M engine sound · music in Settings';
-	private static readonly FinishHint: string = 'Enter to save · Esc then Space to race again';
+	private static readonly FinishHint: string = 'Enter to update name · Esc then Space to race again';
 	private readonly root: HTMLDivElement;
 	private readonly starsEl: HTMLDivElement;
 	private readonly timerEl: HTMLDivElement;
@@ -117,8 +132,8 @@ export default class HUD {
 	private readonly scoreInputEl: HTMLInputElement;
 	private readonly scoreButtonEl: HTMLButtonElement;
 	private readonly scoreStatusEl: HTMLDivElement;
-	private readonly scoreResultEl: HTMLDivElement;
-	private readonly leaderboardEl: HTMLTableElement;
+	private readonly leaderboardEl: HTMLDivElement;
+	private readonly boardTitleEl: HTMLDivElement;
 	private readonly titleEl: HTMLDivElement;
 	private readonly titleStarsEl: HTMLOListElement;
 	private lastStarsText: string = '';
@@ -130,6 +145,7 @@ export default class HUD {
 	private navEnabled: boolean = true;
 	private hasNextStar: boolean = false;
 	private lastMushroomCount: number = MaxMushrooms;
+	private ownRowNameEl: HTMLDivElement = null;
 
 	public constructor() {
 		const style = document.createElement('style');
@@ -171,7 +187,6 @@ export default class HUD {
 		this.finishTotalEl = HUD.element('div', 'total');
 		this.finishTableEl = document.createElement('table');
 
-		this.scoreEl = HUD.element('div', 'hud-score');
 		this.scoreFormEl = HUD.element('div', 'hud-score-form');
 		this.scoreInputEl = document.createElement('input');
 		this.scoreInputEl.type = 'text';
@@ -181,14 +196,26 @@ export default class HUD {
 		this.scoreButtonEl.textContent = 'Submit';
 		this.scoreFormEl.append(this.scoreInputEl, this.scoreButtonEl);
 		this.scoreStatusEl = HUD.element('div', 'hud-score-status');
-		this.scoreResultEl = HUD.element('div', 'hud-score-result');
-		this.leaderboardEl = document.createElement('table');
-		this.leaderboardEl.className = 'hud-leaderboard';
-		this.scoreEl.append(this.scoreFormEl, this.scoreStatusEl, this.scoreResultEl, this.leaderboardEl);
+
+		this.scoreEl = HUD.element('div', 'hud-score');
+		this.scoreEl.append(this.scoreFormEl, this.scoreStatusEl);
 
 		this.restrictKeysToInput(this.scoreInputEl);
 
-		this.finishEl.append(title, this.finishTotalEl, this.finishTableEl, this.scoreEl);
+		this.boardTitleEl = HUD.element('div', 'hud-board-title');
+		this.boardTitleEl.textContent = 'LEADERBOARD';
+		this.leaderboardEl = HUD.element('div', 'hud-leaderboard');
+
+		const board = HUD.element('div', 'hud-board');
+		board.append(this.boardTitleEl, this.leaderboardEl, this.scoreEl);
+
+		const finishLeft = HUD.element('div', 'finish-left');
+		finishLeft.append(title, this.finishTotalEl, this.finishTableEl);
+
+		const finishLayout = HUD.element('div', 'finish-layout');
+		finishLayout.append(finishLeft, board);
+
+		this.finishEl.append(finishLayout);
 
 		this.titleEl = HUD.element('div', 'hud-title');
 		this.titleStarsEl = document.createElement('ol');
@@ -394,22 +421,20 @@ export default class HUD {
 		this.scoreButtonEl.onclick = null;
 		this.scoreStatusEl.textContent = '';
 		this.scoreStatusEl.classList.remove('error');
-		this.scoreResultEl.textContent = '';
 		this.leaderboardEl.textContent = '';
+		this.ownRowNameEl = null;
 	}
 
 	// Shows the "save your time" form prefilled with `defaultName`. `onSubmit` fires on
 	// button click or Enter with the current (trimmed) input value.
-	public showScoreForm(defaultName: string, onSubmit: (name: string) => void): void {
+	public showScoreForm(defaultName: string, buttonLabel: string, onSubmit: (name: string) => void): void {
 		this.scoreInputEl.value = defaultName;
 		this.scoreInputEl.disabled = false;
 		this.scoreButtonEl.disabled = false;
-		this.scoreButtonEl.textContent = 'Submit';
+		this.scoreButtonEl.textContent = buttonLabel;
 		this.scoreFormEl.hidden = false;
 		this.scoreStatusEl.textContent = '';
 		this.scoreStatusEl.classList.remove('error');
-		this.scoreResultEl.textContent = '';
-		this.leaderboardEl.textContent = '';
 		this.scoreButtonEl.onclick = (): void => onSubmit(this.getScoreNameInput());
 	}
 
@@ -422,46 +447,124 @@ export default class HUD {
 		this.scoreInputEl.select();
 	}
 
-	public setScoreSaving(): void {
+	public setScoreButtonLabel(label: string): void {
+		this.scoreButtonEl.textContent = label;
+	}
+
+	public setScoreStatus(text: string, isError: boolean = false): void {
+		this.scoreStatusEl.textContent = text;
+		this.scoreStatusEl.classList.toggle('error', isError);
+	}
+
+	// Disables the form (input + button) while a request is in flight, showing `label`
+	// on both the button and the status line.
+	public setScoreBusy(label: string): void {
 		this.scoreInputEl.disabled = true;
 		this.scoreButtonEl.disabled = true;
-		this.scoreButtonEl.textContent = 'Saving…';
-		this.scoreStatusEl.textContent = '';
-		this.scoreStatusEl.classList.remove('error');
+		this.scoreButtonEl.textContent = label;
+		this.setScoreStatus(label);
+	}
+
+	public setScoreSaving(): void {
+		this.setScoreBusy('Saving…');
 	}
 
 	// `rank` is omitted when the server confirmed the save but didn't echo back the
 	// stored score (a bodyless 2xx) - there's no rank to show in that case.
 	public setScoreSaved(name: string, rank?: number): void {
-		this.scoreFormEl.hidden = true;
-		this.scoreStatusEl.textContent = '';
-		this.scoreStatusEl.classList.remove('error');
-		this.scoreResultEl.textContent = rank !== undefined
+		this.scoreInputEl.disabled = false;
+		this.scoreButtonEl.disabled = false;
+		this.scoreButtonEl.textContent = 'Update name';
+		this.setScoreStatus(rank !== undefined
 			? `Saved as ${name} · Rank #${rank}`
-			: `Saved as ${name}`;
+			: `Saved as ${name}`);
 	}
 
 	public setScoreError(message: string): void {
 		this.scoreInputEl.disabled = false;
 		this.scoreButtonEl.disabled = false;
-		this.scoreButtonEl.textContent = 'Submit';
-		this.scoreStatusEl.textContent = message;
-		this.scoreStatusEl.classList.add('error');
+		this.scoreButtonEl.textContent = 'Retry';
+		this.setScoreStatus(message, true);
 	}
 
-	public showLeaderboard(entries: {id: number; name: string; timeMs: number}[], highlightId: number): void {
+	// Like setScoreError but leaves the button labelled for a rename retry rather than
+	// the initial-submit "Retry".
+	public setScoreEditError(message: string): void {
+		this.scoreInputEl.disabled = false;
+		this.scoreButtonEl.disabled = false;
+		this.scoreButtonEl.textContent = 'Update name';
+		this.setScoreStatus(message, true);
+	}
+
+	// Renders the ranked board. `ownOutside`, when given, is the player's own entry when
+	// it didn't make it into `entries` (rendered below a "…" divider with its real rank).
+	public showLeaderboard(
+		entries: {id: number; name: string; timeMs: number}[],
+		highlightId: number | null,
+		ownOutside: {rank: number; name: string; timeMs: number} | null = null
+	): void {
 		this.leaderboardEl.textContent = '';
+		this.ownRowNameEl = null;
+
+		let previousTime: number = null;
+		let previousRank: number = 1;
 
 		for (let i = 0; i < entries.length; i++) {
 			const entry = entries[i];
-			const row = this.leaderboardEl.insertRow();
+			const rank = previousTime !== null && entry.timeMs === previousTime ? previousRank : i + 1;
+			previousTime = entry.timeMs;
+			previousRank = rank;
 
-			if (entry.id === highlightId) {
-				row.classList.add('own');
+			const isOwn = entry.id === highlightId;
+			const row = this.buildLeaderboardRow(rank, entry.name, entry.timeMs, isOwn, i);
+
+			if (isOwn) {
+				this.ownRowNameEl = row.nameEl;
 			}
 
-			row.insertCell().textContent = `#${i + 1} ${entry.name}`;
-			row.insertCell().textContent = RaceState.formatTime(entry.timeMs);
+			this.leaderboardEl.appendChild(row.el);
+		}
+
+		if (ownOutside) {
+			const divider = HUD.element('div', 'hud-leaderboard-divider');
+			divider.textContent = '⋯';
+			this.leaderboardEl.appendChild(divider);
+
+			const row = this.buildLeaderboardRow(
+				ownOutside.rank, ownOutside.name, ownOutside.timeMs, true, entries.length
+			);
+			this.ownRowNameEl = row.nameEl;
+			this.leaderboardEl.appendChild(row.el);
+		}
+	}
+
+	private buildLeaderboardRow(
+		rank: number, name: string, timeMs: number, isOwn: boolean, animationIndex: number
+	): {el: HTMLDivElement; nameEl: HTMLDivElement} {
+		const row = HUD.element('div', 'hud-leaderboard-row');
+		if (isOwn) {
+			row.classList.add('own');
+		}
+		row.style.animationDelay = `${animationIndex * 45}ms`;
+
+		const rankEl = HUD.element('div', 'rank');
+		rankEl.textContent = `${rank}`;
+
+		const nameEl = HUD.element('div', 'name');
+		nameEl.textContent = name;
+
+		const timeEl = HUD.element('div', 'time');
+		timeEl.textContent = RaceState.formatTime(timeMs);
+
+		row.append(rankEl, nameEl, timeEl);
+
+		return {el: row, nameEl};
+	}
+
+	// Renames the currently rendered own row in place, without a full re-render.
+	public updateOwnName(name: string): void {
+		if (this.ownRowNameEl) {
+			this.ownRowNameEl.textContent = name;
 		}
 	}
 

@@ -10,13 +10,16 @@ export type ValidationResult =
 	| {ok: true; value: NewScore}
 	| {ok: false; error: string};
 
-export function validateNewScore(body: unknown): ValidationResult {
-	if (typeof body !== 'object' || body === null || Array.isArray(body)) {
-		return {ok: false, error: 'Request body must be an object'};
-	}
+export type NameValidationResult =
+	| {ok: true; value: string}
+	| {ok: false; error: string};
 
-	const {name, timeMs} = body as Record<string, unknown>;
-
+/**
+ * Validate and clean up a submitted player name: trim it, strip control
+ * characters, and enforce the length bounds. Shared by score creation and
+ * rename validation so both apply exactly the same rules.
+ */
+export function validateName(name: unknown): NameValidationResult {
 	if (typeof name !== 'string') {
 		return {ok: false, error: 'name must be a string'};
 	}
@@ -26,6 +29,24 @@ export function validateNewScore(body: unknown): ValidationResult {
 	if (cleanedName.length < 1 || cleanedName.length > MAX_NAME_LENGTH) {
 		return {ok: false, error: `name must be between 1 and ${MAX_NAME_LENGTH} characters`};
 	}
+
+	return {ok: true, value: cleanedName};
+}
+
+export function validateNewScore(body: unknown): ValidationResult {
+	if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+		return {ok: false, error: 'Request body must be an object'};
+	}
+
+	const {name, timeMs} = body as Record<string, unknown>;
+
+	const nameResult = validateName(name);
+
+	if ('error' in nameResult) {
+		return {ok: false, error: nameResult.error};
+	}
+
+	const cleanedName = nameResult.value;
 
 	if (typeof timeMs !== 'number' || !Number.isFinite(timeMs)) {
 		return {ok: false, error: 'timeMs must be a finite number'};

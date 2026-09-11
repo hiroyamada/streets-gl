@@ -1,4 +1,4 @@
-import {fetchTopScores, submitScore} from "~/app/kart/ScoreApi";
+import {fetchTopScores, submitScore, updateScoreName} from "~/app/kart/ScoreApi";
 
 function jsonResponse(status: number, body: unknown): Response {
 	return textResponse(status, JSON.stringify(body));
@@ -19,7 +19,9 @@ describe('submitScore', () => {
 	});
 
 	test('posts the name and time and returns the stored score', async () => {
-		const stored = {id: 1, name: 'Otter', timeMs: 62340, createdAt: '2024-01-01T00:00:00.000Z', rank: 3};
+		const stored = {
+			id: 1, name: 'Otter', timeMs: 62340, createdAt: '2024-01-01T00:00:00.000Z', rank: 3, editToken: 'secret'
+		};
 		const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201, stored));
 		global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -110,5 +112,58 @@ describe('fetchTopScores', () => {
 		global.fetch = jest.fn().mockResolvedValue(textResponse(200, 'not json')) as unknown as typeof fetch;
 
 		await expect(fetchTopScores(10)).rejects.toThrow('malformed response from the server');
+	});
+});
+
+describe('updateScoreName', () => {
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
+	test('patches the score with the new name and edit token', async () => {
+		const updated = {id: 1, name: 'Fox', timeMs: 62340, createdAt: '2024-01-01T00:00:00.000Z', rank: 2};
+		const fetchMock = jest.fn().mockResolvedValue(jsonResponse(200, updated));
+		global.fetch = fetchMock as unknown as typeof fetch;
+
+		const result = await updateScoreName(1, 'secret', 'Fox');
+
+		expect(result).toEqual(updated);
+		expect(fetchMock).toHaveBeenCalledWith('/api/scores/1', {
+			method: 'PATCH',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({name: 'Fox', editToken: 'secret'})
+		});
+	});
+
+	test('propagates the server error message on a 403 response', async () => {
+		global.fetch = jest.fn().mockResolvedValue(
+			jsonResponse(403, {error: 'invalid edit token'})
+		) as unknown as typeof fetch;
+
+		await expect(updateScoreName(1, 'wrong', 'Fox')).rejects.toThrow('invalid edit token');
+	});
+
+	test('propagates a network failure', async () => {
+		global.fetch = jest.fn().mockRejectedValue(new Error('offline')) as unknown as typeof fetch;
+
+		await expect(updateScoreName(1, 'secret', 'Fox')).rejects.toThrow('offline');
+	});
+
+	test('resolves to null on a bodyless 2xx response instead of throwing', async () => {
+		global.fetch = jest.fn().mockResolvedValue(textResponse(204, '')) as unknown as typeof fetch;
+
+		await expect(updateScoreName(1, 'secret', 'Fox')).resolves.toBeNull();
+	});
+
+	test('resolves to null when the 2xx body is whitespace only', async () => {
+		global.fetch = jest.fn().mockResolvedValue(textResponse(200, '   \n')) as unknown as typeof fetch;
+
+		await expect(updateScoreName(1, 'secret', 'Fox')).resolves.toBeNull();
+	});
+
+	test('throws a clear error on a malformed 2xx body', async () => {
+		global.fetch = jest.fn().mockResolvedValue(textResponse(200, '{not json')) as unknown as typeof fetch;
+
+		await expect(updateScoreName(1, 'secret', 'Fox')).rejects.toThrow('malformed response from the server');
 	});
 });
