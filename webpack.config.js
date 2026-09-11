@@ -8,8 +8,15 @@ const {EsbuildPlugin} = require('esbuild-loader');
 
 const childProcess = require('child_process');
 const {DefinePlugin} = require("webpack");
-const COMMIT_SHA = process.env.SOURCE_COMMIT || process.env.GITHUB_SHA || childProcess.execSync('git rev-parse HEAD').toString().trim();
-const COMMIT_BRANCH = process.env.COOLIFY_BRANCH || process.env.GITHUB_REF_NAME || childProcess.execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
+const gitOrUnknown = (cmd) => {
+	try {
+		return childProcess.execSync(cmd).toString().trim();
+	} catch (e) {
+		return 'unknown';
+	}
+};
+const COMMIT_SHA = process.env.SOURCE_COMMIT || process.env.GITHUB_SHA || gitOrUnknown('git rev-parse HEAD');
+const COMMIT_BRANCH = process.env.COOLIFY_BRANCH || process.env.GITHUB_REF_NAME || gitOrUnknown("git rev-parse --abbrev-ref HEAD");
 const VERSION = require('./package.json').version;
 
 module.exports = (env, argv) => ([{
