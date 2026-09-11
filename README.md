@@ -102,6 +102,8 @@ Streets GL ships with a small Node.js/Express backend for storing and retrieving
   curl http://localhost:8080/api/health
   ```
 
+Press `B` in the app to toggle an "API debug" panel, which lets you send `GET`/`POST` requests to `/api/scores` from the browser and inspect the raw responses — useful for checking that the score server and its Postgres (Supabase) connection are working.
+
 ### Local development
 
 Run the API server and the webpack dev server in two terminals:
