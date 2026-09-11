@@ -6,12 +6,7 @@ import CompassPanel from "~/app/ui/components/CompassPanel";
 import SelectionPanel from "~/app/ui/components/SelectionPanel";
 import {ActionsContext, AtomsContext} from "~/app/ui/UI";
 import RenderGraphViewer from "~/app/ui/components/RenderGraphViewer";
-import SearchPanel from "~/app/ui/components/SearchPanel";
-import TimePanel from "~/app/ui/components/TimePanel";
 import NavPanel from "~/app/ui/components/NavPanel";
-import InfoModalPanel from "~/app/ui/components/InfoModalPanel";
-import SettingsModalPanel from "~/app/ui/components/SettingsModalPanel";
-import GeolocationButton from "~/app/ui/components/GeolocationButton";
 import styles from './MainScreen.scss';
 import SavedPlacesModalPanel from "~/app/ui/components/SavedPlacesModalPanel";
 import DataTimestamp from "~/app/ui/components/DataTimestamp";
@@ -56,27 +51,18 @@ const MainScreen: React.FC = () => {
 
 	return (
 		<div className={containerClassNames}>
-			<SearchPanel/>
 			<NavPanel
 				setActiveModalWindow={setActiveModalWindow}
 				activeModalWindow={activeModalWindow}
 			/>
 			{
-				activeModalWindow === 'info' && <InfoModalPanel onClose={closeModal}/>
-			}
-			{
-				activeModalWindow === 'settings' && <SettingsModalPanel onClose={closeModal}/>
-			}
-			{
 				activeModalWindow === 'savedPlaces' && <SavedPlacesModalPanel onClose={closeModal}/>
 			}
 			<DebugInfo showRenderGraph={showRenderGraph}/>
 			<DataTimestamp/>
-			<TimePanel/>
 			<SelectionPanel/>
 			<LegalAttributionPanel/>
 			<CompassPanel/>
-			<GeolocationButton/>
 			{
 				isRenderGraphVisible && (
 					<RenderGraphViewer
