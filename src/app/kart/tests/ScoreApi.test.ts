@@ -1,10 +1,15 @@
 import {fetchTopScores, submitScore} from "~/app/kart/ScoreApi";
 
 function jsonResponse(status: number, body: unknown): Response {
+	return textResponse(status, JSON.stringify(body));
+}
+
+function textResponse(status: number, text: string): Response {
 	return {
 		ok: status >= 200 && status < 300,
 		status,
-		json: (): Promise<unknown> => Promise.resolve(body)
+		json: (): Promise<unknown> => Promise.resolve(JSON.parse(text)),
+		text: (): Promise<string> => Promise.resolve(text)
 	} as unknown as Response;
 }
 
@@ -41,6 +46,24 @@ describe('submitScore', () => {
 
 		await expect(submitScore('Otter', 100)).rejects.toThrow('network down');
 	});
+
+	test('resolves to null on a bodyless 2xx response instead of throwing', async () => {
+		global.fetch = jest.fn().mockResolvedValue(textResponse(201, '')) as unknown as typeof fetch;
+
+		await expect(submitScore('Otter', 100)).resolves.toBeNull();
+	});
+
+	test('resolves to null when the 2xx body is whitespace only', async () => {
+		global.fetch = jest.fn().mockResolvedValue(textResponse(200, '   \n')) as unknown as typeof fetch;
+
+		await expect(submitScore('Otter', 100)).resolves.toBeNull();
+	});
+
+	test('throws a clear error on a malformed 2xx body', async () => {
+		global.fetch = jest.fn().mockResolvedValue(textResponse(200, '{not json')) as unknown as typeof fetch;
+
+		await expect(submitScore('Otter', 100)).rejects.toThrow('malformed response from the server');
+	});
 });
 
 describe('fetchTopScores', () => {
@@ -69,5 +92,23 @@ describe('fetchTopScores', () => {
 		global.fetch = jest.fn().mockRejectedValue(new Error('offline')) as unknown as typeof fetch;
 
 		await expect(fetchTopScores(10)).rejects.toThrow('offline');
+	});
+
+	test('resolves to an empty leaderboard on a bodyless 2xx response', async () => {
+		global.fetch = jest.fn().mockResolvedValue(textResponse(204, '')) as unknown as typeof fetch;
+
+		await expect(fetchTopScores(10)).resolves.toEqual([]);
+	});
+
+	test('resolves to an empty leaderboard when the 2xx body is whitespace only', async () => {
+		global.fetch = jest.fn().mockResolvedValue(textResponse(200, '  ')) as unknown as typeof fetch;
+
+		await expect(fetchTopScores(10)).resolves.toEqual([]);
+	});
+
+	test('throws a clear error on a malformed 2xx body', async () => {
+		global.fetch = jest.fn().mockResolvedValue(textResponse(200, 'not json')) as unknown as typeof fetch;
+
+		await expect(fetchTopScores(10)).rejects.toThrow('malformed response from the server');
 	});
 });

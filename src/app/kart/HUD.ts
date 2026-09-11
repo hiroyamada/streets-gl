@@ -370,11 +370,15 @@ export default class HUD {
 		this.scoreStatusEl.classList.remove('error');
 	}
 
-	public setScoreSaved(name: string, rank: number): void {
+	// `rank` is omitted when the server confirmed the save but didn't echo back the
+	// stored score (a bodyless 2xx) - there's no rank to show in that case.
+	public setScoreSaved(name: string, rank?: number): void {
 		this.scoreFormEl.hidden = true;
 		this.scoreStatusEl.textContent = '';
 		this.scoreStatusEl.classList.remove('error');
-		this.scoreResultEl.textContent = `Saved as ${name} · Rank #${rank}`;
+		this.scoreResultEl.textContent = rank !== undefined
+			? `Saved as ${name} · Rank #${rank}`
+			: `Saved as ${name}`;
 	}
 
 	public setScoreError(message: string): void {
