@@ -8,16 +8,11 @@ export interface StarDefinition {
 	lon: number;
 }
 
-// Collected in this order (a lap around Shibuya).
+// Collected in this order. Kept to three stars so a run takes about a minute.
 export const StarDefinitions: StarDefinition[] = [
 	{name: 'Scramble Crossing', lat: 35.6595, lon: 139.7005},
-	{name: 'Hachiko', lat: 35.6590, lon: 139.7006},
 	{name: 'Shibuya 109', lat: 35.6597, lon: 139.6987},
-	{name: 'Miyashita Park', lat: 35.6620, lon: 139.7020},
-	{name: 'Shibuya Stream', lat: 35.6570, lon: 139.7025},
-	{name: 'Dogenzaka', lat: 35.6580, lon: 139.6970},
-	{name: 'Center-gai', lat: 35.6610, lon: 139.6990},
-	{name: 'Yoyogi Park entrance', lat: 35.6670, lon: 139.6980}
+	{name: 'Miyashita Park', lat: 35.6620, lon: 139.7020}
 ];
 
 const ActiveColor = new Vec3(1.0, 0.85, 0.2);
