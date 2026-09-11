@@ -31,7 +31,7 @@ export default class KartMaterialContainer extends MaterialContainer {
 					type: RendererTypes.UniformType.Matrix4,
 					value: new Float32Array(16)
 				}, {
-					name: 'color',
+					name: 'tint',
 					block: 'MainBlock',
 					type: RendererTypes.UniformType.Float3,
 					value: new Float32Array(3)

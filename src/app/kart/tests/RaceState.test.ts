@@ -11,7 +11,7 @@ describe('RaceState', () => {
 	});
 
 	test('counts down 3, 2, 1 then go', () => {
-		const race = new RaceState(8);
+		const race = new RaceState(3);
 		race.reset(1000);
 		expect(race.getCountdownValue(1000)).toBe(3);
 		expect(race.getCountdownValue(1999)).toBe(3);

@@ -3,7 +3,8 @@ import SceneSystem from "~/app/systems/SceneSystem";
 import ControlsSystem, {NavigationMode} from "~/app/systems/ControlsSystem";
 import TerrainSystem from "~/app/systems/TerrainSystem";
 import SettingsSystem from "~/app/systems/SettingsSystem";
-import ColoredBox from "~/app/kart/ColoredBox";
+import ColoredMesh from "~/app/kart/ColoredMesh";
+import KartModel from "~/app/kart/KartModel";
 import KartController from "~/app/kart/KartController";
 import Star, {StarDefinitions} from "~/app/kart/Stars";
 import HUD from "~/app/kart/HUD";
@@ -24,12 +25,11 @@ const StarBobAmplitude = 0.25;
 const StarSpinSpeed = 1.5;
 const StarPopDuration = 300;
 const JumpStartPenalty = 0.7;
-const DriftReadyTime = 0.6;
 const ArrowEdgeInset = 44;
 
 export default class KartSystem extends System {
-	public objects: ColoredBox[] = [];
-	private kartBox: ColoredBox = null;
+	public objects: ColoredMesh[] = [];
+	private kart: KartModel = null;
 	private stars: Star[] = [];
 	private hud: HUD = null;
 	private audio: RaceAudio = new RaceAudio();
@@ -46,16 +46,9 @@ export default class KartSystem extends System {
 		const worldScale = MathUtils.getMercatorScaleFactor(lat);
 		const wrapper = this.systemManager.getSystem(SceneSystem).objects.wrapper;
 
-		this.kartBox = new ColoredBox(
-			2 * worldScale,
-			0.8 * worldScale,
-			1.2 * worldScale,
-			new Vec3(0.9, 0.15, 0.1),
-			new Vec3(0, 0, 0)
-		);
-
-		this.objects.push(this.kartBox);
-		wrapper.add(this.kartBox);
+		this.kart = new KartModel(worldScale);
+		this.objects.push(...this.kart.renderables);
+		wrapper.add(this.kart.root);
 
 		this.stars = StarDefinitions.map((def, i) => {
 			const star = Star.create(def, worldScale, i * (Math.PI / 4));
@@ -286,21 +279,6 @@ export default class KartSystem extends System {
 		}
 	}
 
-	private updateKartGlow(controller: KartController): void {
-		const glow = this.kartBox.glow;
-
-		if (controller.isBoosting) {
-			const f = controller.boostTime;
-			glow.set(2 * f, 2 * f, 2.5 * f);
-		} else if (controller.isDrifting && controller.driftTime >= DriftReadyTime) {
-			glow.set(2.0, 0.9, 0.2);
-		} else if (controller.isDrifting) {
-			glow.set(0.2, 0.6, 2.0);
-		} else {
-			glow.set(0, 0, 0);
-		}
-	}
-
 	private updateNextStarHUD(controller: KartController): void {
 		const next = this.stars[this.race.nextStarIndex];
 
@@ -386,14 +364,7 @@ export default class KartSystem extends System {
 
 		const now = performance.now();
 
-		this.kartBox.position.x = controller.position.x;
-		this.kartBox.position.y = controller.position.y;
-		this.kartBox.position.z = controller.position.z;
-		this.kartBox.rotation.y = controller.heading;
-		// SceneSystem has already refreshed world matrices this frame, so refresh this one
-		// explicitly; otherwise the kart renders one frame behind the camera and stutters.
-		this.kartBox.updateMatrix();
-		this.kartBox.updateMatrixWorld();
+		this.kart.update(controller, deltaTime);
 
 		if (this.race.phase === RacePhase.Countdown) {
 			this.updateCountdown(controller, now);
@@ -409,7 +380,6 @@ export default class KartSystem extends System {
 		controller.boostStarted = false;
 
 		this.updateStars(controller, deltaTime, now);
-		this.updateKartGlow(controller);
 		this.updateNextStarHUD(controller);
 		this.hud.setTimer(RaceState.formatTime(this.race.getElapsed(now)));
 		this.audio.setEngine(controller.speedRatio, controller.isBoosting);
