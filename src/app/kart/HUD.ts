@@ -9,8 +9,9 @@ const Styles = `
 #hud .hud-timer { position: absolute; top: 18px; right: 24px; font-size: 40px; letter-spacing: 1px; }
 #hud .hud-split { position: absolute; top: 70px; right: 26px; font-size: 22px; color: #7dff9a; opacity: 0; }
 #hud .hud-split.show { animation: hudSplit 1.6s ease-out; }
-#hud .hud-next { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 24px; white-space: nowrap; }
+#hud .hud-next { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 24px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 #hud .hud-next span { color: #ffd83d; }
+#hud .hud-nav { display: inline-block; font-size: 1.2em; color: #ffd83d; line-height: 1; will-change: transform; }
 #hud .hud-arrow { position: absolute; left: 0; top: 0; font-size: 44px; color: #ffd83d; line-height: 1; will-change: transform; }
 #hud .hud-countdown { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font-size: 160px; color: #ffd83d; opacity: 0; }
 #hud .hud-countdown.go { color: #7dff9a; }
@@ -40,11 +41,30 @@ const Styles = `
 #hud .hud-leaderboard td { padding: 1px 10px; text-align: left; }
 #hud .hud-leaderboard td:last-child { text-align: right; }
 #hud .hud-leaderboard tr.own { color: #ffd83d; }
+#hud .hud-title { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; }
+#hud .hud-title.show { display: flex; }
+#hud .hud-title .panel { background: rgba(10,10,30,.55); border-radius: 14px; padding: 30px 46px;
+	display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 88vw; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+#hud .hud-title .game-title { font-size: 62px; color: #ffd83d; text-align: center; margin-bottom: 2px; }
+#hud .hud-title .course { font-size: 20px; }
+#hud .hud-title .kart-line { font-size: 18px; margin-top: 4px; }
+#hud .hud-title .best { font-size: 18px; color: #7dff9a; margin-top: 4px; }
+#hud .hud-title ol { font-size: 17px; font-style: normal; text-align: left; margin: 8px 0 0; padding-left: 22px; }
+#hud .hud-title .prompt { font-size: 26px; color: #ffd83d; margin-top: 14px; animation: hudPulse 1.4s ease-in-out infinite; }
+#hud .hud-title .hint2 { font-size: 13px; font-style: normal; opacity: .85; margin-top: 4px; }
+@keyframes hudPulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @keyframes hudPop { 0% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(.9); opacity: 0; } }
 @keyframes hudBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes hudSplit { 0% { opacity: 0; transform: translateY(-6px); } 15% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes hudFloat { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
 `;
+
+export interface TitleScreenOptions {
+	courseName: string;
+	starNames: string[];
+	kartName: string;
+	bestTimeText: string | null;
+}
 
 export default class HUD {
 	private static readonly DriveHint: string =
@@ -55,6 +75,8 @@ export default class HUD {
 	private readonly timerEl: HTMLDivElement;
 	private readonly splitEl: HTMLDivElement;
 	private readonly nextEl: HTMLDivElement;
+	private readonly navEl: HTMLDivElement;
+	private readonly nextTextEl: HTMLDivElement;
 	private readonly arrowEl: HTMLDivElement;
 	private readonly countdownEl: HTMLDivElement;
 	private readonly soundEl: HTMLDivElement;
@@ -70,11 +92,17 @@ export default class HUD {
 	private readonly scoreStatusEl: HTMLDivElement;
 	private readonly scoreResultEl: HTMLDivElement;
 	private readonly leaderboardEl: HTMLTableElement;
+	private readonly titleEl: HTMLDivElement;
+	private readonly titleBestEl: HTMLDivElement;
+	private readonly titleStarsEl: HTMLOListElement;
 	private lastStarsText: string = '';
 	private lastTimerText: string = '';
 	private lastNextText: string = '';
 	private lastCountdownText: string = '';
 	private arrowVisible: boolean = true;
+	private lastNavAngle: number = null;
+	private navEnabled: boolean = true;
+	private hasNextStar: boolean = false;
 
 	public constructor() {
 		const style = document.createElement('style');
@@ -88,6 +116,10 @@ export default class HUD {
 		this.timerEl = HUD.element('div', 'hud-timer');
 		this.splitEl = HUD.element('div', 'hud-split');
 		this.nextEl = HUD.element('div', 'hud-next');
+		this.navEl = HUD.element('div', 'hud-nav');
+		this.navEl.textContent = '➤';
+		this.nextTextEl = HUD.element('div', 'hud-next-text');
+		this.nextEl.append(this.navEl, this.nextTextEl);
 		this.arrowEl = HUD.element('div', 'hud-arrow');
 		this.arrowEl.textContent = '➤';
 		this.countdownEl = HUD.element('div', 'hud-countdown');
@@ -122,9 +154,13 @@ export default class HUD {
 
 		this.finishEl.append(title, this.finishTotalEl, this.finishBestEl, this.finishTableEl, this.scoreEl);
 
+		this.titleEl = HUD.element('div', 'hud-title');
+		this.titleBestEl = HUD.element('div', 'best');
+		this.titleStarsEl = document.createElement('ol');
+
 		this.root.append(
 			this.starsEl, this.timerEl, this.splitEl, this.nextEl, this.arrowEl,
-			this.countdownEl, this.hintEl, this.soundEl, this.finishEl
+			this.countdownEl, this.hintEl, this.soundEl, this.finishEl, this.titleEl
 		);
 
 		const container = document.getElementById('wrapper') ?? document.body;
@@ -132,6 +168,7 @@ export default class HUD {
 
 		this.setArrow(false, 0, 0, 0);
 		this.setEngineSound(false);
+		this.nextEl.style.display = 'none';
 	}
 
 	private static element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string): HTMLElementTagNameMap[K] {
@@ -189,16 +226,43 @@ export default class HUD {
 
 	public setNext(name: string, metres: number): void {
 		const text = name === null ? '' : `NEXT ▸ ${name} · ${Math.round(metres)} m`;
+		const hasNextStar = name !== null;
+
+		if (hasNextStar !== this.hasNextStar) {
+			this.hasNextStar = hasNextStar;
+			this.nextEl.style.display = hasNextStar ? 'flex' : 'none';
+		}
 
 		if (text !== this.lastNextText) {
 			this.lastNextText = text;
-			this.nextEl.textContent = '';
+			this.nextTextEl.textContent = '';
 
 			if (name !== null) {
 				const label = document.createElement('span');
 				label.textContent = 'NEXT ▸ ';
-				this.nextEl.append(label, `${name} · ${Math.round(metres)} m`);
+				this.nextTextEl.append(label, `${name} · ${Math.round(metres)} m`);
 			}
+		}
+	}
+
+	// Always-visible compass-style arrow pointing toward the next star, shown next to
+	// hud-next. angle is in radians: 0 = straight ahead (arrow points up), positive =
+	// clockwise (star to the right). The glyph itself points right at rotate(0), so we
+	// offset by -PI/2 to make 0 point up. No transition is applied so the arrow never
+	// spins the long way around the ±PI wrap.
+	public setNav(angle: number): void {
+		if (this.lastNavAngle !== null && Math.abs(angle - this.lastNavAngle) < 0.005) {
+			return;
+		}
+
+		this.lastNavAngle = angle;
+		this.navEl.style.transform = `rotate(${angle - Math.PI / 2}rad)`;
+	}
+
+	public setNavEnabled(enabled: boolean): void {
+		if (enabled !== this.navEnabled) {
+			this.navEnabled = enabled;
+			this.navEl.style.display = enabled ? 'inline-block' : 'none';
 		}
 	}
 
@@ -333,6 +397,49 @@ export default class HUD {
 			row.insertCell().textContent = `#${i + 1} ${entry.name}`;
 			row.insertCell().textContent = RaceState.formatTime(entry.timeMs);
 		}
+	}
+
+	public showTitle(options: TitleScreenOptions): void {
+		this.titleEl.textContent = '';
+
+		const panel = HUD.element('div', 'panel');
+
+		const gameTitle = HUD.element('div', 'game-title');
+		gameTitle.textContent = 'SHIBUYA KART';
+
+		const course = HUD.element('div', 'course');
+		course.textContent = `COURSE — ${options.courseName.toUpperCase()}`;
+
+		this.titleStarsEl.textContent = '';
+		for (const name of options.starNames) {
+			const item = document.createElement('li');
+			item.textContent = name;
+			this.titleStarsEl.appendChild(item);
+		}
+
+		const kartLine = HUD.element('div', 'kart-line');
+		kartLine.textContent = `KART — ${options.kartName.toUpperCase()}`;
+
+		panel.append(gameTitle, course, this.titleStarsEl, kartLine);
+
+		if (options.bestTimeText !== null) {
+			this.titleBestEl.textContent = `BEST TIME ${options.bestTimeText}`;
+			panel.append(this.titleBestEl);
+		}
+
+		const prompt = HUD.element('div', 'prompt');
+		prompt.textContent = 'PRESS SPACE TO START';
+
+		const hint2 = HUD.element('div', 'hint2');
+		hint2.textContent = 'R restarts · WASD / arrows drive · hold Space while turning to drift';
+
+		panel.append(prompt, hint2);
+		this.titleEl.appendChild(panel);
+		this.titleEl.classList.add('show');
+	}
+
+	public hideTitle(): void {
+		this.titleEl.classList.remove('show');
 	}
 
 	public setEngineSound(enabled: boolean): void {

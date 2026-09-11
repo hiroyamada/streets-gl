@@ -10,8 +10,9 @@ import Star, {StarDefinitions} from "~/app/kart/Stars";
 import HUD from "~/app/kart/HUD";
 import RaceAudio from "~/app/kart/RaceAudio";
 import RaceMusic from "~/app/kart/RaceMusic";
-import RaceState, {GoDisplayDuration, RacePhase} from "~/app/kart/RaceState";
+import RaceState, {CourseName, GoDisplayDuration, RacePhase} from "~/app/kart/RaceState";
 import ScoreSubmission from "~/app/kart/ScoreSubmission";
+import {getStarBearing} from "~/app/kart/StarNavigation";
 import Vec3 from "~/lib/math/Vec3";
 import MathUtils from "~/lib/math/MathUtils";
 import Config from "~/app/Config";
@@ -27,6 +28,8 @@ const StarSpinSpeed = 1.5;
 const StarPopDuration = 300;
 const JumpStartPenalty = 0.7;
 const ArrowEdgeInset = 44;
+const KartName = 'Standard';
+const CinematicOrbitRate = 0.25; // radians per second
 
 export default class KartSystem extends System {
 	public objects: ColoredMesh[] = [];
@@ -73,6 +76,7 @@ export default class KartSystem extends System {
 		this.scoreSubmission = new ScoreSubmission(this.hud);
 		this.music = new RaceMusic(this.audio.getContext());
 		this.listenToMusicSettings();
+		this.listenToNavSettings();
 
 		document.addEventListener('keydown', (e: KeyboardEvent) => this.keyDownEvent(e));
 
@@ -99,6 +103,16 @@ export default class KartSystem extends System {
 		});
 	}
 
+	// Mirrors listenToMusicSettings: lets the Settings panel toggle the compass-style
+	// nav arrow live, without polling the schema every frame.
+	private listenToNavSettings(): void {
+		const settings = this.systemManager.getSystem(SettingsSystem).settings;
+
+		settings.onChange('starArrow', ({statusValue}) => {
+			this.hud.setNavEnabled(statusValue !== 'off');
+		});
+	}
+
 	private keyDownEvent(e: KeyboardEvent): void {
 		const active = document.activeElement;
 
@@ -109,8 +123,22 @@ export default class KartSystem extends System {
 		this.audio.unlock();
 		this.music.unlock();
 
-		if (e.code === 'KeyR' || (e.code === 'Space' && this.race.phase === RacePhase.Finished)) {
+		if (e.code === 'KeyR') {
 			this.restart();
+		} else if (e.code === 'Space' && this.race.phase === RacePhase.Finished) {
+			this.restart();
+		} else if (e.code === 'Space' && this.race.phase === RacePhase.Title) {
+			const controller = this.controller;
+
+			if (this.race.beginCountdown(performance.now())) {
+				this.hud.hideTitle();
+
+				if (controller) {
+					controller.cinematic = false;
+				}
+
+				this.audio.startConfirm();
+			}
 		} else if (e.code === 'KeyM') {
 			this.hud.setEngineSound(this.audio.toggleEngine());
 		}
@@ -137,6 +165,12 @@ export default class KartSystem extends System {
 		this.hud.setCount(0, this.stars.length);
 		this.hud.setTimer(RaceState.formatTime(0));
 		this.updateActiveStar();
+		this.hud.showTitle({
+			courseName: CourseName,
+			starNames: this.stars.map(star => star.name),
+			kartName: KartName,
+			bestTimeText: this.race.bestTime === null ? null : RaceState.formatTime(this.race.bestTime)
+		});
 
 		this.music.setTempoMultiplier(1);
 
@@ -153,6 +187,8 @@ export default class KartSystem extends System {
 			controller.reset();
 			controller.locked = true;
 			controller.introProgress = 0;
+			controller.cinematic = true;
+			controller.cinematicAngle = 0;
 		}
 	}
 
@@ -291,7 +327,7 @@ export default class KartSystem extends System {
 	private updateNextStarHUD(controller: KartController): void {
 		const next = this.stars[this.race.nextStarIndex];
 
-		if (!next || this.race.phase === RacePhase.Finished) {
+		if (!next || this.race.phase === RacePhase.Finished || this.race.phase === RacePhase.Title) {
 			this.hud.setNext(null, 0);
 			this.hud.setArrow(false, 0, 0, 0);
 			return;
@@ -301,9 +337,33 @@ export default class KartSystem extends System {
 
 		this.hud.setNext(next.name, distance / controller.worldScale);
 
+		const camera = this.systemManager.getSystem(SceneSystem).objects.camera;
+
+		// The always-visible compass arrow uses the camera's ground-plane forward
+		// direction so it matches what the player sees. The camera's world-space
+		// forward is the negated z-axis of its world matrix (matrixWorld columns are
+		// [right, up, back, translation], see Mat4.translate); fall back to the kart's
+		// own heading if that direction is nearly vertical (e.g. looking straight down).
+		const cameraMatrix = camera.matrixWorld.values;
+		let forwardX = -cameraMatrix[8];
+		let forwardZ = -cameraMatrix[10];
+
+		if (Math.hypot(forwardX, forwardZ) < 1e-4) {
+			const headingForward = KartController.getForwardVector(controller.moveHeading);
+			forwardX = headingForward.x;
+			forwardZ = headingForward.z;
+		}
+
+		const bearing = getStarBearing(
+			controller.position.x, controller.position.z,
+			next.x, next.z,
+			forwardX, forwardZ
+		);
+
+		this.hud.setNav(bearing);
+
 		// Project the star onto the screen; the camera works in wrapper space (world minus
 		// the camera's x/z), so convert first.
-		const camera = this.systemManager.getSystem(SceneSystem).objects.camera;
 		const wrapperPosition = new Vec3(
 			next.x - camera.position.x,
 			next.box.position.y,
@@ -375,7 +435,9 @@ export default class KartSystem extends System {
 
 		this.kart.update(controller, deltaTime);
 
-		if (this.race.phase === RacePhase.Countdown) {
+		if (this.race.phase === RacePhase.Title) {
+			controller.cinematicAngle += CinematicOrbitRate * deltaTime;
+		} else if (this.race.phase === RacePhase.Countdown) {
 			this.updateCountdown(controller, now);
 		} else if (this.goShownAt !== null && now - this.goShownAt > GoDisplayDuration) {
 			this.goShownAt = null;
