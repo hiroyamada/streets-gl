@@ -6,6 +6,7 @@
 		"start": "node server/dist/index.js",
 		"build": "webpack --config ./webpack.config.js --mode=production",
 		"dev": "webpack serve --config ./webpack.config.js --mode=development",
+		"dev:all": "concurrently -n web,api -c blue,green \"npm run dev\" \"npm run server:dev\"",
 		"server:dev": "tsx watch server/src/index.ts",
 		"server:build": "tsc -p server/tsconfig.json",
 		"server:typecheck": "tsc --noEmit -p server/tsconfig.json",

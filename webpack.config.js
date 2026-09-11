@@ -38,9 +38,11 @@ module.exports = (env, argv) => ([{
 	},
 	devServer: {
 		hot: true,
+		port: Number(process.env.DEV_SERVER_PORT) || 3000,
 		proxy: {
 			'/api': {
-				target: 'http://localhost:8080'
+				target: process.env.SCORES_API_URL || 'http://localhost:8080',
+				changeOrigin: true
 			}
 		}
 	},
