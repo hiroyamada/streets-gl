@@ -56,6 +56,7 @@ describe('KartController collisions', () => {
 		kart.position.z = origin.z + z;
 		kart.heading = heading;
 		kart.moveHeading = heading;
+		kart.locked = false;
 		return kart;
 	}
 

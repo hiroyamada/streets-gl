@@ -7,6 +7,7 @@ import PerspectiveCamera from "~/lib/core/PerspectiveCamera";
 import TerrainHeightProvider from "~/app/terrain/TerrainHeightProvider";
 import KartController from "~/app/kart/KartController";
 import BuildingCollider from "~/app/kart/BuildingCollider";
+import Easing from "~/lib/math/Easing";
 
 export default class KartControlsNavigator extends ControlsNavigator {
 	private readonly camera: PerspectiveCamera;
@@ -169,11 +170,15 @@ export default class KartControlsNavigator extends ControlsNavigator {
 		this.controller.update(deltaTime, groundHeight, this.collider);
 
 		const ws = this.controller.worldScale;
-		const forward = KartController.getForwardVector(this.controller.heading);
+		// During the start countdown the camera swings around from in front of the kart
+		// (Mario Kart's intro pan) to its usual chase position behind it.
+		const intro = Easing.easeOutCubic(MathUtils.clamp(this.controller.introProgress, 0, 1));
+		const orbitAngle = (1 - intro) * Math.PI;
+		const forward = KartController.getForwardVector(this.controller.heading + orbitAngle);
 
 		const desiredCameraPosition = new Vec3(
 			this.controller.position.x - forward.x * 9 * ws,
-			this.controller.position.y + 4 * ws,
+			this.controller.position.y + (4 - 1.5 * (1 - intro)) * ws,
 			this.controller.position.z - forward.z * 9 * ws
 		);
 
@@ -181,7 +186,7 @@ export default class KartControlsNavigator extends ControlsNavigator {
 			this.camera.position.set(desiredCameraPosition.x, desiredCameraPosition.y, desiredCameraPosition.z);
 			this.shouldSnapCamera = false;
 		} else {
-			const alpha = 1 - Math.exp(-6 * deltaTime);
+			const alpha = 1 - Math.exp(-(intro < 1 ? 10 : 6) * deltaTime);
 
 			this.camera.position.set(
 				MathUtils.lerp(this.camera.position.x, desiredCameraPosition.x, alpha),
