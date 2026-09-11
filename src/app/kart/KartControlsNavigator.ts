@@ -65,6 +65,10 @@ export default class KartControlsNavigator extends ControlsNavigator {
 				this.controller.reset();
 				this.shouldSnapCamera = true;
 				break;
+			case 'Space':
+				e.preventDefault();
+				this.controller.drift = true;
+				break;
 		}
 	}
 
@@ -85,6 +89,9 @@ export default class KartControlsNavigator extends ControlsNavigator {
 			case 'KeyD':
 			case 'ArrowRight':
 				this.steerRightKeyPressed = false;
+				break;
+			case 'Space':
+				this.controller.drift = false;
 				break;
 		}
 	}
@@ -113,6 +120,7 @@ export default class KartControlsNavigator extends ControlsNavigator {
 		this.throttleBackwardKeyPressed = false;
 		this.steerLeftKeyPressed = false;
 		this.steerRightKeyPressed = false;
+		this.controller.drift = false;
 	}
 
 	public syncWithCamera(prevNavigator: ControlsNavigator): void {

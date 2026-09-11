@@ -34,7 +34,7 @@ export default class HUD {
 		});
 
 		const hint = document.createElement('div');
-		hint.textContent = 'WASD / arrows to drive · R reset · C free camera';
+		hint.textContent = 'WASD / arrows to drive · hold Space while turning to drift, release to boost · R reset · C free camera';
 		Object.assign(hint.style, {
 			position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)',
 			fontSize: '14px', opacity: '.85', whiteSpace: 'nowrap'

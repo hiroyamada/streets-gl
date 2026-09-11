@@ -9,13 +9,24 @@ const Friction = 4;
 const SteerRate = 2.2;
 const ReverseMaxSpeed = 6;
 const MaxDeltaTime = 0.1;
+const DriftSteerMultiplier = 1.8;
+const DriftMinTime = 0.6;
+const DriftSlideRate = 3;
+const GripRate = 12;
+const BoostSpeed = 8;
+const BoostDuration = 1;
 
 export default class KartController {
 	public position: Vec3 = new Vec3();
 	public heading: number = 0;
+	public moveHeading: number = 0;
 	public speed: number = 0;
 	public throttle: number = 0;
 	public steer: number = 0;
+	public drift: boolean = false;
+	public isDrifting: boolean = false;
+	public driftTime: number = 0;
+	public boostTime: number = 0;
 	public worldScale: number = 1;
 
 	public constructor() {
@@ -34,7 +45,34 @@ export default class KartController {
 		this.position.x = startPosition.x;
 		this.position.z = startPosition.y;
 		this.heading = 0;
+		this.moveHeading = 0;
 		this.speed = 0;
+		this.isDrifting = false;
+		this.driftTime = 0;
+		this.boostTime = 0;
+	}
+
+	private updateDrift(dt: number, maxSpeed: number): number {
+		const canDrift = this.drift && this.steer !== 0 && this.speed > 0.3 * maxSpeed;
+
+		if (canDrift) {
+			this.isDrifting = true;
+			this.driftTime += dt;
+		} else if (this.isDrifting) {
+			this.isDrifting = false;
+
+			if (this.driftTime >= DriftMinTime) {
+				this.boostTime = BoostDuration;
+			}
+
+			this.driftTime = 0;
+		}
+
+		if (this.boostTime > 0) {
+			this.boostTime = Math.max(0, this.boostTime - dt);
+		}
+
+		return this.isDrifting ? DriftSteerMultiplier : 1;
 	}
 
 	public update(deltaTime: number, groundHeight: number | null): void {
@@ -60,15 +98,29 @@ export default class KartController {
 			}
 		}
 
-		this.speed = MathUtils.clamp(this.speed, -reverseMaxSpeed, maxSpeed);
+		const steerMultiplier = this.updateDrift(dt, maxSpeed);
+		const boostFactor = this.boostTime / BoostDuration;
+		const boostedMaxSpeed = maxSpeed + BoostSpeed * this.worldScale * boostFactor;
+
+		if (boostFactor > 0 && this.speed >= 0) {
+			this.speed = Math.max(this.speed, boostedMaxSpeed);
+		}
+
+		this.speed = MathUtils.clamp(this.speed, -reverseMaxSpeed, boostedMaxSpeed);
 
 		const speedFactor = MathUtils.clamp(Math.abs(this.speed) / maxSpeed, 0.3, 1);
 
 		// Positive heading turns +x toward -z (west when facing north), which is screen-left
 		// for the chase camera, so steer=+1 (D / ArrowRight) must decrease the heading.
-		this.heading -= this.steer * SteerRate * speedFactor * dt * Math.sign(this.speed);
+		this.heading -= this.steer * SteerRate * steerMultiplier * speedFactor * dt * Math.sign(this.speed);
 
-		const forward = KartController.getForwardVector(this.heading);
+		// The direction of travel lags behind the heading while drifting (the kart slides),
+		// and snaps back quickly when gripping.
+		const followRate = this.isDrifting ? DriftSlideRate : GripRate;
+		const followAlpha = 1 - Math.exp(-followRate * dt);
+		this.moveHeading = MathUtils.lerpAngle(this.moveHeading, this.heading, followAlpha);
+
+		const forward = KartController.getForwardVector(this.moveHeading);
 
 		this.position.x += forward.x * this.speed * dt;
 		this.position.z += forward.z * this.speed * dt;
