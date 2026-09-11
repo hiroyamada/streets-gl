@@ -1,16 +1,22 @@
 import System from "~/app/System";
 import SceneSystem from "~/app/systems/SceneSystem";
-import ControlsSystem from "~/app/systems/ControlsSystem";
+import ControlsSystem, {NavigationMode} from "~/app/systems/ControlsSystem";
 import TerrainSystem from "~/app/systems/TerrainSystem";
+import SettingsSystem from "~/app/systems/SettingsSystem";
 import ColoredBox from "~/app/kart/ColoredBox";
 import KartController from "~/app/kart/KartController";
 import Star, {StarDefinitions} from "~/app/kart/Stars";
 import HUD from "~/app/kart/HUD";
 import RaceAudio from "~/app/kart/RaceAudio";
+import RaceMusic from "~/app/kart/RaceMusic";
 import RaceState, {GoDisplayDuration, RacePhase} from "~/app/kart/RaceState";
 import Vec3 from "~/lib/math/Vec3";
 import MathUtils from "~/lib/math/MathUtils";
 import Config from "~/app/Config";
+
+// During the final stretch of the race (once only one star remains) the music
+// speeds up a little to build excitement, mirroring Mario Kart's final-lap sting.
+const FinalStretchTempoMultiplier = 1.12;
 
 const PickupDistance = 3;
 const StarHoverHeight = 1;
@@ -27,6 +33,8 @@ export default class KartSystem extends System {
 	private stars: Star[] = [];
 	private hud: HUD = null;
 	private audio: RaceAudio = new RaceAudio();
+	private music: RaceMusic = null;
+	private wasKartModeActive: boolean = false;
 	private race: RaceState = null;
 	private lastCountdownValue: number = -1;
 	private goShownAt: number = null;
@@ -67,10 +75,32 @@ export default class KartSystem extends System {
 
 		this.race = new RaceState(this.stars.length);
 		this.hud = new HUD();
+		this.music = new RaceMusic(this.audio.getContext());
+		this.listenToMusicSettings();
 
 		document.addEventListener('keydown', (e: KeyboardEvent) => this.keyDownEvent(e));
 
 		this.restart();
+	}
+
+	// Reacts live to the Settings panel so toggling music or dragging the volume slider
+	// takes effect immediately, without polling the schema every frame.
+	private listenToMusicSettings(): void {
+		const settings = this.systemManager.getSystem(SettingsSystem).settings;
+
+		settings.onChange('music', ({statusValue}) => {
+			const enabled = statusValue === 'on';
+
+			this.music.setEnabled(enabled);
+
+			if (enabled && this.systemManager.getSystem(ControlsSystem).mode === NavigationMode.Kart) {
+				this.music.start();
+			}
+		});
+
+		settings.onChange('musicVolume', ({numberValue}) => {
+			this.music.setVolume((numberValue ?? 60) / 100);
+		});
 	}
 
 	private keyDownEvent(e: KeyboardEvent): void {
@@ -81,6 +111,7 @@ export default class KartSystem extends System {
 		}
 
 		this.audio.unlock();
+		this.music.unlock();
 
 		if (e.code === 'KeyR' || (e.code === 'Space' && this.race.phase === RacePhase.Finished)) {
 			this.restart();
@@ -105,6 +136,15 @@ export default class KartSystem extends System {
 		this.hud.setCount(0, this.stars.length);
 		this.hud.setTimer(RaceState.formatTime(0));
 		this.updateActiveStar();
+
+		this.music.setTempoMultiplier(1);
+
+		if (this.systemManager.getSystem(ControlsSystem).mode === NavigationMode.Kart) {
+			// Restarting mid-race (e.g. pressing R) should pick the loop back up from the
+			// top rather than leaving it mid-bar at the wrong tempo.
+			this.music.stop();
+			this.music.start();
+		}
 
 		const controller = this.controller;
 
@@ -236,6 +276,7 @@ export default class KartSystem extends System {
 			const total = this.race.getElapsed(now);
 
 			this.audio.finishFanfare();
+			this.music.duck();
 			this.hud.showFinish(
 				RaceState.formatTime(total),
 				this.race.splits.map((time, i) => ({name: this.stars[i].name, text: RaceState.formatTime(time)})),
@@ -312,7 +353,31 @@ export default class KartSystem extends System {
 		this.hud.setArrow(true, x, y, Math.atan2(dy, dx));
 	}
 
+	private updateMusicActivity(): void {
+		const kartModeActive = this.systemManager.getSystem(ControlsSystem).mode === NavigationMode.Kart;
+
+		if (kartModeActive && !this.wasKartModeActive) {
+			this.music.start();
+		} else if (!kartModeActive && this.wasKartModeActive) {
+			this.music.stop();
+		}
+
+		this.wasKartModeActive = kartModeActive;
+
+		if (!kartModeActive) {
+			return;
+		}
+
+		// Final-stretch sting: once the last star is up for grabs, nudge the tempo for
+		// extra urgency, mirroring Mario Kart's final-lap music speed-up.
+		const isFinalStretch = this.race.phase === RacePhase.Racing && this.race.nextStarIndex === this.stars.length - 1;
+
+		this.music.setTempoMultiplier(isFinalStretch ? FinalStretchTempoMultiplier : 1);
+	}
+
 	public update(deltaTime: number): void {
+		this.updateMusicActivity();
+
 		const controller = this.controller;
 
 		if (!controller) {
