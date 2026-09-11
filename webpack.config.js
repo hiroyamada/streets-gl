@@ -37,7 +37,12 @@ module.exports = (env, argv) => ([{
 		]
 	},
 	devServer: {
-		hot: true
+		hot: true,
+		proxy: {
+			'/api': {
+				target: 'http://localhost:8080'
+			}
+		}
 	},
 	devtool: argv.mode === 'production' ? undefined : 'inline-source-map',
 	plugins: [
