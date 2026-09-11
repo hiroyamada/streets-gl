@@ -20,6 +20,15 @@ const Seat = new Vec3(0.12, 0.12, 0.13);
 const Flame = new Vec3(1.0, 0.55, 0.1);
 const Yellow = new Vec3(1.0, 0.8, 0.15);
 
+// A drift is "charged" (release for a boost) once held this long, in seconds.
+export const DriftReadyTime = 0.6;
+
+const DriftColor = new Vec3(0.3, 0.6, 1.0);
+const DriftGlow = new Vec3(0.2, 0.6, 2.0);
+const DriftReadyColor = new Vec3(1.0, 0.6, 0.15);
+const DriftReadyGlow = new Vec3(2.0, 0.9, 0.2);
+const BoostWheelGlow = new Vec3(0.6, 0.6, 0.8);
+
 // Geometry (metres, before world scaling). +X forward, +Y up, +Z right.
 export const WheelRadius = 0.3;
 const WheelWidth = 0.24;
@@ -134,6 +143,75 @@ function buildFlameGeometry(): GeometryBuilder {
 	return g;
 }
 
+function buildSparksGeometry(): GeometryBuilder {
+	const g = new GeometryBuilder();
+
+	// A fan of spark shards trailing behind and flaring outward from each rear wheel's
+	// contact patch, Mario Kart drift-spark style. Tapered frustums, wide at the base
+	// (near the tyre) and narrow at the tip, tilted back and up and out so the spray
+	// reads clearly from a chase camera. White so `color`/`glow` set the hue.
+	const wheelBackX = RearAxleX - WheelRadius; // just behind the tyre
+	const farBackX = -1.45;
+	const tyreOuterZ = TrackHalfWidth + WheelWidth / 2; // clear of the tyre
+	const flareOuterZ = TrackHalfWidth + 0.45; // clear of the mud guards (end at 0.78)
+
+	const shardCount = 5;
+
+	for (const side of [1, -1]) {
+		for (let i = 0; i < shardCount; i++) {
+			const t = i / (shardCount - 1);
+
+			const length = MathUtils.lerp(0.45, 0.25, t);
+			const baseWidth = MathUtils.lerp(0.2, 0.12, t);
+			const tipWidth = baseWidth * 0.5;
+			const height = MathUtils.lerp(0.22, 0.12, t);
+
+			// Base: near the tyre, at the ground.
+			const baseXNear = wheelBackX - t * 0.15;
+			const baseXFar = baseXNear - length;
+			const baseZNear = tyreOuterZ + t * 0.12;
+			const baseZFar = baseZNear + baseWidth;
+
+			// Tip: further back, further outward and raised, tapering to a point.
+			const tipXNear = baseXNear - 0.08 - t * 0.15;
+			const tipXFar = tipXNear - length * 0.55;
+			const tipZNear = baseZNear + 0.1 + t * (flareOuterZ - tyreOuterZ);
+			const tipZFar = tipZNear + tipWidth;
+
+			if (side > 0) {
+				g.addFrustum(
+					baseXFar, baseXNear, 0, height, baseZNear, baseZFar,
+					tipXFar, tipXNear, tipZNear, tipZFar,
+					White
+				);
+			} else {
+				g.addFrustum(
+					baseXFar, baseXNear, 0, height, -baseZFar, -baseZNear,
+					tipXFar, tipXNear, -tipZFar, -tipZNear,
+					White
+				);
+			}
+		}
+
+		// A few tiny flying embers, further out and back than the main fan.
+		for (let i = 0; i < 3; i++) {
+			const t = i / 2;
+			const size = 0.08;
+			const emberX = farBackX - t * 0.2;
+			const emberZ = (flareOuterZ + 0.1 + t * 0.15) * side;
+			const emberHeight = 0.05 + t * 0.05;
+
+			g.addBox(
+				[emberX - size / 2, 0, Math.min(emberZ, emberZ - side * size)],
+				[emberX + size / 2, emberHeight, Math.max(emberZ, emberZ - side * size)],
+				White
+			);
+		}
+	}
+
+	return g;
+}
+
 /**
  * The player's go-kart: a chassis with a driver, four wheels that roll and steer,
  * and exhaust flames that show while boosting.
@@ -142,6 +220,7 @@ export default class KartModel {
 	public readonly root: Object3D = new Object3D();
 	public readonly body: ColoredMesh;
 	public readonly flames: ColoredMesh;
+	public readonly sparks: ColoredMesh;
 	public readonly wheels: ColoredMesh[] = [];
 	public readonly renderables: ColoredMesh[] = [];
 	private wheelSpin: number = 0;
@@ -159,6 +238,10 @@ export default class KartModel {
 		this.flames.visible = false;
 		this.root.add(this.flames);
 
+		this.sparks = new ColoredMesh(buildSparksGeometry().build(), Vec3.clone(DriftColor), Vec3.clone(DriftGlow));
+		this.sparks.visible = false;
+		this.root.add(this.sparks);
+
 		const wheelGeometry = buildWheelGeometry().build();
 
 		for (const [x, z] of [
@@ -174,7 +257,7 @@ export default class KartModel {
 			this.root.add(wheel);
 		}
 
-		this.renderables.push(this.body, this.flames, ...this.wheels);
+		this.renderables.push(this.body, this.flames, this.sparks, ...this.wheels);
 	}
 
 	public update(controller: KartController, deltaTime: number): void {
@@ -211,16 +294,51 @@ export default class KartModel {
 			wheel.rotation.y = i < 2 ? steerAngle : 0;
 		}
 
-		// Exhaust flames flicker while the boost is active.
-		const boosting = controller.boostTime > 0;
+		// Exhaust flames flicker while the boost is active, fading out as it runs down;
+		// the wheels also pick up a soft glow so the boost still reads across the kart.
+		const boosting = controller.isBoosting;
 
 		this.flames.visible = boosting;
 
 		if (boosting) {
+			const f = controller.boostTime;
 			const flicker = 0.75 + 0.25 * Math.sin(time * 40) * Math.cos(time * 23);
 
 			this.flames.scale.set(flicker, 1, 1);
 			this.flames.position.x = -1.18 * (1 - flicker);
+			this.flames.glow.set(3.0 * f + 0.5, 1.4 * f + 0.3, 0.3 * f);
+
+			for (const wheel of this.wheels) {
+				wheel.glow.set(BoostWheelGlow.x, BoostWheelGlow.y, BoostWheelGlow.z);
+			}
+		} else {
+			for (const wheel of this.wheels) {
+				wheel.glow.set(0, 0, 0);
+			}
+		}
+
+		// Drift sparks kick up behind the rear wheels while drifting, turning from blue to
+		// orange once the drift is "charged" (ready to release for a boost); flicker a bit
+		// each frame so they read as alive rather than static decals.
+		this.sparks.visible = controller.isDrifting;
+
+		if (controller.isDrifting) {
+			const ready = controller.driftTime >= DriftReadyTime;
+
+			if (ready) {
+				this.sparks.color.set(DriftReadyColor.x, DriftReadyColor.y, DriftReadyColor.z);
+				this.sparks.glow.set(DriftReadyGlow.x, DriftReadyGlow.y, DriftReadyGlow.z);
+			} else {
+				this.sparks.color.set(DriftColor.x, DriftColor.y, DriftColor.z);
+				this.sparks.glow.set(DriftGlow.x, DriftGlow.y, DriftGlow.z);
+			}
+
+			// Jitter only the height so the sparks stay anchored over the rear wheels
+			// instead of sliding along the car with the root-relative scale.
+			const jitter = 1 + 0.3 * Math.sin(time * 50) * Math.cos(time * 31);
+
+			this.sparks.scale.set(1, MathUtils.clamp(jitter, 0.7, 1.3), 1);
+			this.sparks.position.y = Math.max(0, 0.015 * Math.sin(time * 60));
 		}
 
 		// The scene's world matrices were refreshed before this system ran, so recompute

@@ -88,8 +88,9 @@ describe('KartModel', () => {
 		const controller = new KartController();
 
 		expect(model.wheels.length).toBe(4);
-		expect(model.renderables.length).toBe(6);
+		expect(model.renderables.length).toBe(7);
 		expect(model.flames.visible).toBe(false);
+		expect(model.sparks.visible).toBe(false);
 
 		controller.position.set(10, 2, -5);
 		controller.heading = 0.7;
@@ -115,5 +116,31 @@ describe('KartModel', () => {
 				expect(Number.isFinite(value)).toBe(true);
 			}
 		}
+	});
+
+	it('shows drift sparks only while drifting, coloured by how charged the drift is', () => {
+		const model = new KartModel(1);
+		const controller = new KartController();
+		controller.locked = false;
+
+		model.update(controller, 1 / 60);
+		expect(model.sparks.visible).toBe(false);
+
+		controller.isDrifting = true;
+		controller.driftTime = 0.2;
+		model.update(controller, 1 / 60);
+
+		expect(model.sparks.visible).toBe(true);
+		expect(model.sparks.glow.z).toBeGreaterThan(model.sparks.glow.x);
+
+		controller.driftTime = 1;
+		model.update(controller, 1 / 60);
+
+		expect(model.sparks.visible).toBe(true);
+		expect(model.sparks.glow.x).toBeGreaterThan(model.sparks.glow.z);
+
+		controller.isDrifting = false;
+		model.update(controller, 1 / 60);
+		expect(model.sparks.visible).toBe(false);
 	});
 });
