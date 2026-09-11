@@ -168,8 +168,7 @@ export default class KartSystem extends System {
 		this.hud.showTitle({
 			courseName: CourseName,
 			starNames: this.stars.map(star => star.name),
-			kartName: KartName,
-			bestTimeText: this.race.bestTime === null ? null : RaceState.formatTime(this.race.bestTime)
+			kartName: KartName
 		});
 
 		this.music.setTempoMultiplier(1);
@@ -309,16 +308,14 @@ export default class KartSystem extends System {
 		this.updateActiveStar();
 
 		if (this.race.isComplete) {
-			const isNewBest = this.race.finish(now);
+			this.race.finish(now);
 			const total = this.race.getElapsed(now);
 
 			this.audio.finishFanfare();
 			this.music.duck();
 			this.hud.showFinish(
 				RaceState.formatTime(total),
-				this.race.splits.map((time, i) => ({name: this.stars[i].name, text: RaceState.formatTime(time)})),
-				RaceState.formatTime(this.race.bestTime),
-				isNewBest
+				this.race.splits.map((time, i) => ({name: this.stars[i].name, text: RaceState.formatTime(time)}))
 			);
 			this.scoreSubmission.present(total);
 		}
